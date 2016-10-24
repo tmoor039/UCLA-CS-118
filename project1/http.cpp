@@ -1,6 +1,8 @@
 #include "http.h"
 using namespace std;
 
+// The Message implementation - This is the base class
+
 HttpMessage::HttpMessage()
 	: m_version("HTTP/1.0"), m_connection("non-persistent")
 {}
@@ -17,6 +19,8 @@ HttpMessage::HttpMessage(string version)
 	}
 }
 
+// The Request implementation - Used to make generic HTTP Requests (only supports GET for now)
+
 HttpRequest::HttpRequest()
 	: m_URL(""), m_method("GET"), m_host("localhost")
 {}
@@ -25,6 +29,7 @@ HttpRequest::HttpRequest(string url, string host, string method)
 	: m_URL(url), m_method(method), m_host(host)
 {}
 
+// Encode the data as bytes
 vector<uint8_t> HttpRequest::encode(){
 	string cr_nl = "\r\n";
 	string final_message = m_method + " " + m_URL + " " + m_version + cr_nl +
@@ -34,6 +39,7 @@ vector<uint8_t> HttpRequest::encode(){
 	return wire;
 }
 
+// Convenience overloading for easy output
 ostream& operator<<(ostream& os, const HttpRequest& http_req) {
 	os << "Method: " << http_req.m_method << endl
 	   << "URL: " << http_req.m_URL << endl
@@ -42,6 +48,8 @@ ostream& operator<<(ostream& os, const HttpRequest& http_req) {
 	   << "Connection-type: " << http_req.m_connection << endl;
 	return os;
 }
+
+// The Response implementation - Used to make generic HTTP Responses
 
 HttpResponse::HttpResponse()
 	: m_status(200)
@@ -53,6 +61,7 @@ HttpResponse::HttpResponse(int status, vector<uint8_t> data)
 	m_data = data;
 }
 
+// Encode the data as bytes
 vector<uint8_t> HttpResponse::encode(){
 	string cr_nl = "\r\n";
 	string final_message = m_version + to_string(m_status) + cr_nl + m_connection +
@@ -63,6 +72,7 @@ vector<uint8_t> HttpResponse::encode(){
 	return wire;
 }
 
+// Convenience overloading for easy output
 ostream& operator<<(ostream& os, const HttpResponse& http_resp){
 	os  << "Version: " << http_resp.m_version << endl
 		<< "Status: " << http_resp.get_code(http_resp.m_status) << endl

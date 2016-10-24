@@ -1,6 +1,7 @@
 #include "http.h"
 using namespace std;
 
+// Convenience method to print out bytes
 void print_byte_data(vector<uint8_t> data){
 	int counter = 0;
 	for(auto d : data) {
@@ -13,12 +14,12 @@ void print_byte_data(vector<uint8_t> data){
 }
 
 int main(int argc, char** argv){
+	// Some very basic argument parsing to test the request and response
 	if(argc < 2) {
 		cout << "bleep\n";
 		cout << "Usage: [request | response] {url, host}\n";
 		return -1;
 	}
-	//cout << "Argv 0: " << argv[0] << "Argv 1: " << argv[1] << "Argv 2: " << argv[2] << endl;
 	if(string(argv[1]) == "request"){
 		if(argc < 3){ cout << "Please enter a supporting URL for the request!\n"; return -1; }
 		if(argc == 4 && string(argv[3]) == "localhost"){

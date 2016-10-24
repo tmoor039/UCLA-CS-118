@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 // Abstract class for HTTP Messages
+// Every HTTP Message should have a version and connection type
 class HttpMessage {
 protected:
 	std::string m_version;
@@ -24,6 +25,7 @@ public:
 	virtual std::vector<uint8_t> encode() = 0;
 };
 
+// Every Request should have at the least a url, method and host name
 class HttpRequest: HttpMessage {
 	std::string m_URL;
 	std::string m_method;
@@ -50,6 +52,7 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const HttpRequest& http_req);
 };
 
+// Every Response should have a status code and the data associated with it
 class HttpResponse: HttpMessage {
 	unsigned int m_status;
 	std::vector<uint8_t> m_data;
@@ -59,6 +62,7 @@ class HttpResponse: HttpMessage {
 		{404, "NOT FOUND"},
 		{505, "HTTP VERSION NOT SUPPORTED"}
 	};
+	// Used for data printing
 	void print_data() const{
 		int counter = 0;
 		for(uint8_t d : m_data){
@@ -75,6 +79,7 @@ public:
 	// Accessors
 	unsigned int get_status() const { return m_status; }
 	std::vector<uint8_t> get_data() const { return m_data; }
+	// Get the mapped number to status code message
 	std::string get_code(unsigned int status) const { 
 		try{
 			return m_codes.at(status);
