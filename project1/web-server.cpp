@@ -9,7 +9,7 @@ using namespace std;
 #include <sys/socket.h>
 #include <netdb.h>
 
-#define BUF_SIZE 1000000000
+#define BUF_SIZE 1000
 
 int main(int argc, char* argv[]) {
     struct addrinfo hints;
@@ -61,6 +61,12 @@ int main(int argc, char* argv[]) {
     
     if (rp == NULL) {
         fprintf(stderr, "Failed to bind socket to address\n");
+        exit(1);
+    }
+
+    // Let socket listen for incoming connections.
+    if (listen(sfd, 1) == -1) {
+        fprintf(stderr, "Failed to listen on socket %d\n", sfd);
         exit(1);
     }
 
