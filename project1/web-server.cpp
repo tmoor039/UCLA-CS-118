@@ -14,17 +14,29 @@ using namespace std;
 int main(int argc, char* argv[]) {
     struct addrinfo hints;
     struct addrinfo *result, *rp;
-    int sfd;  // socket file descriptor
+    int sfd, cfd;  // server file descriptor, client file descriptor
     char buf[BUF_SIZE];
+    
+    string hostname;
+    string port;
+    string filedir;
 
-    // require 3 arguments
-    if (argc != 4) {
+    // require 1 or 3 arguments
+    if (argc != 1 && argc != 4) {
         fprintf(stderr, "Usage: %s [hostname] [port] [file-dir]\n", argv[0]);
         exit(1);
     }
-    char const* hostname = argv[1];
-    char const* port = argv[2];
-    char const* filedir = argv[3];
+    
+    if (argc == 4) {
+        hostname = argv[1];
+        port = argv[2];
+        filedir = argv[3];
+    }
+    else {  // default arguments
+        hostname = "localhost";
+        port = "4000";
+        filedir = "/tmp";
+    }
 
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;  /* Allow IPv4 or IPv6 */
@@ -71,4 +83,13 @@ int main(int argc, char* argv[]) {
     }
 
     freeaddrinfo(result);  
+
+    sockaddr_in clientAddr;
+    socketlen_t clientAddrSize;
+    cfd = accept(sfd, (sockaddr_in *) &clientAddr, &clientAddrSize);
+    if (clientSfd == -1) {
+        fprintf(stderr, "Unable to accept connection\n");
+    }
+
+    
 }
