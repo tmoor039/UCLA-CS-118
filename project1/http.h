@@ -3,6 +3,18 @@
 #include <vector>
 #include <unordered_map>
 
+struct URL{
+	URL()
+		: host("localhost"), object(""), port(80)
+	{}
+	URL(std::string v_object, std::string v_host="localhost", unsigned int v_port=80)
+		: host(v_host), object(v_object), port(v_port)
+	{}
+	std::string host;
+	std::string object;
+	unsigned int port;
+};
+
 // Abstract class for HTTP Messages
 // Every HTTP Message should have a version and connection type
 class HttpMessage {
@@ -27,23 +39,19 @@ public:
 
 // Every Request should have at the least a url, method and host name
 class HttpRequest: HttpMessage {
-	std::string m_URL;
 	std::string m_method;
-	std::string m_host;
+	URL m_url;
 public:
 	// Constructors
-	HttpRequest();
-	HttpRequest(std::string url, std::string host="localhost", std::string method="GET");
+	HttpRequest(URL url, std::string method="GET");
 
 	// Accessors
-	std::string get_url() const { return m_URL; }
+	URL get_url() const { return m_url; }
 	std::string get_method() const { return m_method; }
-	std::string get_host() const { return m_host; }
 
 	// Mutators
-	void set_url(std::string url) { m_URL = url; }
+	void set_url(URL url) { m_url = url; }
 	void set_method(std::string method) { m_method = method; }
-	void set_host(std::string host) { m_host = host; }
 
 	// Overiding methods
 	std::vector<uint8_t> encode() override;
