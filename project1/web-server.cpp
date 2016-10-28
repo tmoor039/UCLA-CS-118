@@ -7,8 +7,11 @@ using namespace std;
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/socket.h>
 #include <netdb.h>
+
+#include "http.h"
 
 #define BUF_SIZE 1000
 
@@ -35,37 +38,45 @@ vector<string> decode(vector<uint8_t> d_http_req){
 	return parse(result);
 }
 
-int binder(int& sock_fd, struct sockaddr* my_addr, int addr_len){
+void binder(int& sock_fd, struct sockaddr* my_addr, int addr_len){
 	if(bind(sock_fd, my_addr, addr_len) == -1){
 		perror("Error in binding socket!");
-		return 2;
+		exit(2);
 	}
-	return 0;
 }
 
-int listener(int& sock_fd){
+void listener(int& sock_fd){
 	if(listen(sock_fd,1) == -1){
 		perror("Error initiating listening!");
-		return 3;
+		exit(3);
 	}
-	return 0;
 }
 
+int acceptor(int& sock_fd, struct sockaddr* cli_addr, int* addrlen){
+	int cli_fd = accept(socket_fd, cli_addr, addrlen);
+	if(cli_fd == -1){
+		perror("Error in accepting request!");
+		exit(4);
+	}
+	return cli_fd;
+}
 
+short string_to_short(string input){
+	int i = atoi(input.c_str());
+	if(i > USHRT_MAX){
+		perror("Error, invalid port given!");
+		exit(5);
+	}
+	return (unsigned short)i;
+}
 
 int main(int argc, char* argv[]) {
-    struct addrinfo hints;
-    struct addrinfo *result, *rp;
-    int sfd, cfd;  // server file descriptor, client file descriptor
-	char buf[BUF_SIZE];
-    
-	int socket_fd = socket(AF_INET, SOCK_STREAM, 
+    // Create a socket file descriptor for IPv4 and TCP
+	int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
 
-    string hostname;
-    string port;
-    string filedir;
+    string hostname, port, filedir;
 
-    // require 1 or 3 arguments
+    // require 0 or 3 arguments
     if (argc != 1 && argc != 4) {
         fprintf(stderr, "Usage: %s [hostname] [port] [file-dir]\n", argv[0]);
         exit(1);
@@ -75,50 +86,34 @@ int main(int argc, char* argv[]) {
         hostname = argv[HOST_NAME];
         port = argv[PORT];
         filedir = argv[FILE_DIR];
-    }
-    else {  // default arguments
+    } else {  // default arguments
         hostname = "localhost";
         port = "4000";
         filedir = ".";
     }
 
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;  /* Allow IPv4 or IPv6 */
-    hints.ai_socktype = SOCK_STREAM;  /* socket type used for TCP */
-    hints.ai_flags = AI_PASSIVE;  /* returned socket address is used for 
-                                    server */
-    hints.ai_flags = 0;  /* socket addresses with any protocol can be 
-                            returned by getaddrinfo() */    
-    hints.ai_canonname = NULL;
-    hints.ai_addr = NULL;
-    hints.ai_next = NULL;
+	URL host_url("", hostname, (unsigned)stoi(port));
 
-    int s;
-    s = getaddrinfo(hostname.c_str(), port.c_str(), &hints, &result);
-    if (s != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-        exit(1);
-    }
-    
-    /* Result is list of addrinfo structures. Try each address until
-    we can create socket and bind. */
-    for (rp = result; rp != NULL; rp = rp->ai_next) {
-        sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-        if (sfd == -1) {  // socket creation failed
-            continue;
-        }        
-        if (::bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0) {
-            break;  /* bind successful */
-        }
-        else {
-            close(sfd);
-        }
-    }
-    
-    if (rp == NULL) {
-        fprintf(stderr, "Failed to bind socket to address\n");
-        exit(1);
-    }
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(string_to_short(port));
+    if(host_url.resolveDomain() == ""){
+    	perror("Error resolving domain name!");
+    	exit(6);
+	}
+    addr.sin_addr.s_addr = inet_addr(host_url.resolveDomain());
+    memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
+	
+	binder(socket_fd, (struct addrinfo*)& addr, sizeof(addr));
+	listener(socket_fd);
+	
+	struct sockaddr_in clientAddr;
+	socklen_t clientAddrSize = sizeof(clientAddr);
+	int client_fd = acceptor(socket_fd, (struct sockaddr*)&clientAddr, &clientAddrSize);
+
+	char ipstr[INET_ADDRSTRLEN] = {'\0'};
+	inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
+	cout << "Accept a connection from: " << ipstr << ":" << ntohs
 
     // Let socket listen for incoming connections.
     if (listen(sfd, 1) == -1) {
@@ -130,10 +125,39 @@ int main(int argc, char* argv[]) {
 
     sockaddr_in clientAddr;
     socklen_t clientAddrSize;
-    cfd = accept(sfd, (struct sockaddr *) &clientAddr, &clientAddrSize);
+    cfd = accept(sfd, (sockaddr *) &clientAddr, &clientAddrSize);
     if (cfd == -1) {
         fprintf(stderr, "Unable to accept connection\n");
     }
-
+    // receive request message
+    int nBytes = recv(sfd, buf, BUF_SIZE, 0);
+    if (nBytes < 0) {
+        fprintf(stderr, "Failed to receive message\n");
+    }
     
+    // save request message as vector
+    vector<uint8_t> request;
+    for (int i = 0; i < nBytes; i++) {
+        request.push_back(buf[i]);
+    }
+
+    // decode request message
+    vector<string> requestParsed = decode(request);
+
+    string URL = requestParsed[1];
+    
+    // open the web page
+    FILE* fp = fopen(URL, "r");
+    
+    // obtain file size
+    fseek (fp , 0 , SEEK_END);
+    int fsize = ftell (fp);
+    rewind (fp);
+
+    // allocate memory for data from web page and read data.
+    char* data;
+    data = new char[size];
+    fread(data, 1, fsize, fp);    
+
+
 }
