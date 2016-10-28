@@ -1,5 +1,4 @@
 #include <iostream>
-using namespace std;
 
 #include "http.h"
 #include <stdio.h>
@@ -11,7 +10,7 @@ using namespace std;
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <stdlib.h>
-#include <netdb.h>
+#include <sstream>
 
 #define BUF_SIZE 1000
 
@@ -22,7 +21,7 @@ struct Connection {
   struct sockaddr_in dest;
 };
 
-URL *createURL(string urlString) {
+URL *createURL(std::string urlString) {
   URL *url = new URL;
 
   // Find the starting point after '://'
@@ -42,7 +41,7 @@ URL *createURL(string urlString) {
   }
 
   // Find host name
-  string host = "";
+  std::string host = "";
   for (; i < urlString.length(); i++) {
     if (urlString[i] == ':') {
       i++;
@@ -56,7 +55,7 @@ URL *createURL(string urlString) {
   }
 
   // Find port number
-  string port = "";
+  std::string port = "";
   for (; i < urlString.length(); i++) {
     if (urlString[i] == '/') {
       break;
@@ -69,6 +68,11 @@ URL *createURL(string urlString) {
   url->object = urlString.substr(i, urlString.length() - i);
 
   // Find ip address of host
+  std::string ip = "";
+  ip = url->resolveDomain();
+  if (ip == "") {
+    return NULL;
+  }
   url->ip = url->resolveDomain();
 
   return url;
@@ -80,7 +84,7 @@ Connection *connectToURLHost(URL *url) {
   connection->sfd = socket(AF_INET, SOCK_STREAM, 0);
 
   connection->dest.sin_family = AF_INET;
-  connection->dest.sin_port = htons(url->port);     // short, network byte order
+  connection->dest.sin_port = htons(url->port);
   connection->dest.sin_addr.s_addr = inet_addr(url->ip.c_str());
   memset(connection->dest.sin_zero, '\0', sizeof(connection->dest.sin_zero));
 
@@ -92,14 +96,60 @@ Connection *connectToURLHost(URL *url) {
   return connection;
 }
 
-void sendHttpRequest(HttpRequest &request, Connection &connection) {
+int sendHttpRequest(HttpRequest *request, Connection *connection) {
+  std::vector<uint8_t> data = request->encode();
+  std::string input = "Hello, world!";
+
+  for (int i = 0; i < data.size(); i++) {
+    std::cout << data[i];
+  }
+
+  if (send(connection->sfd, &data, data.size(), 0) == -1) {
+    perror("send");
+    return 1;
+  }
+
+  return 0;
 }
 
-void getHttpResponse(Connection &connection) {
+HttpResponse *getHttpResponse(Connection *connection) {
+  bool isEnd = false;
+  std::string input;
+  char buf[BUF_SIZE] = {0};
+  std::stringstream ss;
+  std::vector<uint8_t> data;
+  
+  while (!isEnd) {
+    memset(buf, '\0', sizeof(buf));
+
+    int length = recv(connection->sfd, buf, 20, 0);
+    if (length == -1) {
+      perror("recv");
+      return NULL;
+    } else if (length == 0) {
+      
+    }
+    for (int i = 0; i < BUF_SIZE; i++) {
+      if (buf[i] == '\0') {
+        break;
+      }
+      data.push_back(buf[i]);
+    }
+    ss << buf << std::endl;
+    std::cout << "echo: ";
+    std::cout << buf << std::endl;
+
+    if (ss.str() == "close\n")
+      break;
+
+    ss.str("");
+  }
+
+  return NULL;
 }
 
-void closeConnection(Connection &connection) {
-  close(connection.sfd);
+void closeConnection(Connection *connection) {
+  close(connection->sfd);
 }
 
 int main(int argc, char* argv[]) {
@@ -114,14 +164,26 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Improper URL (%s)\n", argv[1]);
         exit(1);
       }
+
       Connection *connection = connectToURLHost(url);
       if (connection == NULL) {
         exit(1);
       }
+
       HttpRequest request(*url);
-      sendHttpRequest(request, *connection);
-      getHttpResponse(*connection);
-      closeConnection(*connection);
+
+      int status;
+      status = sendHttpRequest(&request, connection);
+      if (status != 0) {
+        exit(1);
+      }
+
+      HttpResponse *response = getHttpResponse(connection);
+      if (response == NULL) {
+        exit(1);
+      }
+
+      closeConnection(connection);
     } 
 
     return EXIT_SUCCESS;
