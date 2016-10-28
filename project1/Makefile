@@ -4,4 +4,4 @@ default:
 	g++ -std=c++11 web-client.cpp -o web-client
 
 clean:
-	rm http web-server web-client
+	rm -f http web-server web-client

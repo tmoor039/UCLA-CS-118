@@ -1,6 +1,7 @@
 #include <iostream>
 using namespace std;
 
+#include "http.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,44 +13,63 @@ using namespace std;
 
 #define BUF_SIZE 1000
 
-int sock = -1;
-int port = 4000;
-string address = "";
+struct Connection {
+  char buffer[BUF_SIZE + 1];
+  int len;
+  int sfd;
+  struct sockaddr_in dest;
+};
+
+URL createURL(string urlString) {
+  URL url;
+  return url;
+}
+
+Connection connectToURLHost(URL url) {
+  Connection connection;
+
+  connection.sfd = socket(AF_INET, SOCK_STREAM, 0);
+
+  memset(&connection.dest, 0, sizeof(connection.dest));
+
+  connection.dest.sin_family = AF_INET;
+  connection.dest.sin_addr.s_addr = inet_addr(url.ip.c_str());
+  connection.dest.sin_port = htons(url.port);
+
+  connect(connection.sfd, (struct sockaddr *) &connection.dest, sizeof(struct sockaddr_in));
+    
+  connection.len = recv(connection.sfd, connection.buffer, BUF_SIZE, 0);
+  connection.buffer[connection.len] = '\0';
+  printf("Received %s (%d bytes).\n", connection.buffer, connection.len);
+
+  return connection;
+}
+
+void sendHttpRequest(HttpRequest request, Connection connection) {
+}
+
+void getHttpResponse(Connection connection) {
+}
+
+void closeConnection(Connection connection) {
+  close(connection.sfd);
+}
 
 int main(int argc, char* argv[]) {
 
-    string *urls;
-
-    // require more than 1 argument
     if (argc == 1) {
         fprintf(stderr, "Usage: %s [URL] [URL]...\n", argv[0]);
         exit(1);
     }
 
-    urls = new string[argc - 1];
     for (int i = 1; i < argc; i++) {
-      urls[i - 1] = argv[i];
+      URL url = createURL(argv[i]);
+      Connection connection = connectToURLHost(url);
+      HttpRequest request = HttpRequest(url);
+      sendHttpRequest(request, connection);
+      getHttpResponse(connection);
+      closeConnection(connection);
     } 
 
-    char buffer[BUF_SIZE + 1];
-    int len, mysocket;
-    struct sockaddr_in dest;
-
-    mysocket = socket(AF_INET, SOCK_STREAM, 0);
-
-    memset(&dest, 0, sizeof(dest));
-    dest.sin_family = AF_INET;
-    dest.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    dest.sin_port = htons(port);
-
-    connect(mysocket, (struct sockaddr *)&dest, sizeof(struct sockaddr_in));
-
-    len = recv(mysocket, buffer, BUF_SIZE, 0);
-
-    buffer[len] = '\0';
-
-    printf("Received %s (%d bytes).\n", buffer, len);
-
-    close(mysocket);
     return EXIT_SUCCESS;
 }
