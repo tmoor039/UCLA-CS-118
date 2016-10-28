@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
     hints.ai_next = NULL;
 
     int s;
-    s = getaddrinfo(hostname, port, &hints, &result);
+    s = getaddrinfo(hostname.c_str(), port.c_str(), &hints, &result);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         exit(1);
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
         if (sfd == -1) {  // socket creation failed
             continue;
         }        
-        if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0) {
+        if (::bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0) {
             break;  /* bind successful */
         }
         else {
@@ -85,9 +85,9 @@ int main(int argc, char* argv[]) {
     freeaddrinfo(result);  
 
     sockaddr_in clientAddr;
-    socketlen_t clientAddrSize;
-    cfd = accept(sfd, (sockaddr_in *) &clientAddr, &clientAddrSize);
-    if (clientSfd == -1) {
+    socklen_t clientAddrSize;
+    cfd = accept(sfd, (struct sockaddr *) &clientAddr, &clientAddrSize);
+    if (cfd == -1) {
         fprintf(stderr, "Unable to accept connection\n");
     }
 
