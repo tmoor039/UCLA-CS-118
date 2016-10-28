@@ -16,8 +16,26 @@ using namespace std;
 #define PORT 2 
 #define FILE_DIR 3
 
-vector<string> decode(vector<uint8_t> d_http_req){
+vector<string> parse(string decoded_message){
+	vector<string> tokens;
+	string word = "";
+	for(int i = 0; i < decoded_message.size(); i++){
+		if(decoded_message[i] != ' ' && decoded_message[i] != '\r' && decoded_message[i] != '\n'){
+			word += decoded_message[i];
+		} else {
+			tokens.push_back(word);
+			word = "";
+		}
+	}
+	return tokens;
+}
 
+vector<string> decode(vector<uint8_t> d_http_req){
+	string result = "";
+	for(uint8_t byte : http_req){
+		result += char(byte);
+	}
+	return parse(result);
 }
 
 int main(int argc, char* argv[]) {
@@ -99,6 +117,4 @@ int main(int argc, char* argv[]) {
     if (cfd == -1) {
         fprintf(stderr, "Unable to accept connection\n");
     }
-
-    
 }

@@ -46,6 +46,7 @@ class HttpRequest: HttpMessage {
 public:
 	// Constructors
 	HttpRequest(URL url, std::string method="GET");
+	virtual ~HttpRequest() {};
 
 	// Accessors
 	URL get_url() const { return m_url; }
@@ -85,6 +86,7 @@ class HttpResponse: HttpMessage {
 public:
 	HttpResponse();
 	HttpResponse(int status, std::vector<uint8_t> data);
+	virtual ~HttpResponse(){};
 
 	// Accessors
 	unsigned int get_status() const { return m_status; }
