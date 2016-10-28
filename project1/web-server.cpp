@@ -119,10 +119,35 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Unable to accept connection\n");
     }
     
-    int n = recv(sfd, buf, BUF_SIZE, 0);
-    if (n < 0) {
+    // receive request message
+    int nBytes = recv(sfd, buf, BUF_SIZE, 0);
+    if (nBytes < 0) {
         fprintf(stderr, "Failed to receive message\n");
     }
     
+    // save request message as vector
+    vector<uint8_t> request;
+    for (int i = 0; i < nBytes; i++) {
+        request.push_back(buf[i]);
+    }
+
+    // decode request message
+    vector<string> requestParsed = decode(request);
+
+    string URL = requestParsed[1];
     
+    // open the web page
+    FILE* fp = fopen(URL, "r");
+    
+    // obtain file size
+    fseek (fp , 0 , SEEK_END);
+    int fsize = ftell (fp);
+    rewind (fp);
+
+    // allocate memory for data from web page and read data.
+    char* data;
+    data = new char[size];
+    fread(data, 1, fsize, fp);    
+
+
 }
