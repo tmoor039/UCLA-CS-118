@@ -62,7 +62,7 @@ HttpRequest::HttpRequest(URL url, string method)
 vector<uint8_t> HttpRequest::encode(){
 	string cr_nl = "\r\n";
 	string final_message = m_method + " " + m_url.object + " " + m_version + cr_nl +
-						   m_url.host + cr_nl + m_connection + cr_nl + cr_nl;
+						   "Host: " + m_url.host + cr_nl + "Connection: " + m_connection + cr_nl + cr_nl;
 	vector<uint8_t> wire(final_message.begin(), final_message.end());
 
 	return wire;
@@ -81,20 +81,22 @@ ostream& operator<<(ostream& os, const HttpRequest& http_req) {
 // The Response implementation - Used to make generic HTTP Responses
 
 HttpResponse::HttpResponse()
-	: m_status(200)
+	: m_status(200), m_data_size(0);
 {}
 
 HttpResponse::HttpResponse(int status, vector<uint8_t> data)
 	: m_status(status)
 {
 	m_data = data;
+	m_data_size = data.size();
 }
 
 // Encode the data as bytes
 vector<uint8_t> HttpResponse::encode(){
 	string cr_nl = "\r\n";
-	string final_message = m_version + to_string(m_status) + cr_nl + m_connection +
-						   cr_nl + cr_nl;
+	string final_message = to_string(m_data_size) + cr_nl + 
+		m_version + to_string(m_status) + cr_nl + m_connection +
+		cr_nl + cr_nl;
 	vector<uint8_t> wire(final_message.begin(), final_message.end());
 	wire.insert(wire.end(), m_data.begin(), m_data.end());
 

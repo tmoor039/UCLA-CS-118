@@ -76,6 +76,7 @@ public:
 // Every Response should have a status code and the data associated with it
 class HttpResponse: HttpMessage {
 	unsigned int m_status;
+	size_t m_data_size;
 	std::vector<uint8_t> m_data;
 	const std::unordered_map<unsigned int, std::string> m_codes = {
 		{200, "OK"},
