@@ -23,7 +23,7 @@ class URL{
 	std::string host;
   std::string ip;
 	std::string object;
-  short port;
+  unsigned short port;
 };
 
 // Abstract class for HTTP Messages
