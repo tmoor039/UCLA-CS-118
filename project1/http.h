@@ -11,6 +11,7 @@ struct URL{
 		: host(v_host), object(v_object), port(v_port)
 	{}
 	std::string host;
+  std::string ip;
 	std::string object;
 	unsigned int port;
 };
