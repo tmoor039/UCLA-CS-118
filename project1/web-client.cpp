@@ -25,7 +25,7 @@ URL createURL(string urlString) {
   return url;
 }
 
-Connection connectToURLHost(URL url) {
+Connection connectToURLHost(URL &url) {
   Connection connection;
 
   connection.sfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -45,18 +45,17 @@ Connection connectToURLHost(URL url) {
   return connection;
 }
 
-void sendHttpRequest(HttpRequest request, Connection connection) {
+void sendHttpRequest(HttpRequest &request, Connection &connection) {
 }
 
-void getHttpResponse(Connection connection) {
+void getHttpResponse(Connection &connection) {
 }
 
-void closeConnection(Connection connection) {
+void closeConnection(Connection &connection) {
   close(connection.sfd);
 }
 
 int main(int argc, char* argv[]) {
-
     if (argc == 1) {
         fprintf(stderr, "Usage: %s [URL] [URL]...\n", argv[0]);
         exit(1);
@@ -65,7 +64,7 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) {
       URL url = createURL(argv[i]);
       Connection connection = connectToURLHost(url);
-      HttpRequest request = HttpRequest(url);
+      HttpRequest request(url);
       sendHttpRequest(request, connection);
       getHttpResponse(connection);
       closeConnection(connection);
