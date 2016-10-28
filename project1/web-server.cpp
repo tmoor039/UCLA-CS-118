@@ -43,12 +43,13 @@ int main(int argc, char* argv[]) {
     struct addrinfo *result, *rp;
     int sfd, cfd;  // server file descriptor, client file descriptor
     char buf[BUF_SIZE];
+    memset(&buf, 0, sizeof(char));
     
     string hostname;
     string port;
     string filedir;
 
-    // require 1 or 3 arguments
+    // require 0 or 3 arguments
     if (argc != 1 && argc != 4) {
         fprintf(stderr, "Usage: %s [hostname] [port] [file-dir]\n", argv[0]);
         exit(1);
@@ -90,7 +91,7 @@ int main(int argc, char* argv[]) {
         if (sfd == -1) {  // socket creation failed
             continue;
         }        
-        if (::bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0) {
+        if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0) {
             break;  /* bind successful */
         }
         else {
@@ -113,8 +114,15 @@ int main(int argc, char* argv[]) {
 
     sockaddr_in clientAddr;
     socklen_t clientAddrSize;
-    cfd = accept(sfd, (struct sockaddr *) &clientAddr, &clientAddrSize);
+    cfd = accept(sfd, (sockaddr *) &clientAddr, &clientAddrSize);
     if (cfd == -1) {
         fprintf(stderr, "Unable to accept connection\n");
     }
+    
+    int n = recv(sfd, buf, BUF_SIZE, 0);
+    if (n < 0) {
+        fprintf(stderr, "Failed to receive message\n");
+    }
+    
+    
 }
