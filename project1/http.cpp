@@ -14,7 +14,7 @@ string URL::resolveDomain() {
 
   // get address
   int status = 0;
-  if ((status = getaddrinfo(host.c_str(), "80", &hints, &res)) != 0) {
+  if ((status = getaddrinfo(host.c_str(), to_string(port).c_str(), &hints, &res)) != 0) {
     return "";
   }
 
