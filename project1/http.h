@@ -24,6 +24,7 @@ protected:
 public:
 	HttpMessage();
 	HttpMessage(std::string version);
+	virtual ~HttpMessage() {};
 
 	// Accessors
 	std::string get_version() const { return m_version; }
