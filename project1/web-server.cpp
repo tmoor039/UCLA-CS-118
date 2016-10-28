@@ -18,14 +18,11 @@ using namespace std;
 
 vector<string> parse(string decoded_message){
 	vector<string> tokens;
-	string word = "";
-	for(int i = 0; i < decoded_message.size(); i++){
-		if(decoded_message[i] != ' ' && decoded_message[i] != '\r' && decoded_message[i] != '\n'){
-			word += decoded_message[i];
-		} else {
-			tokens.push_back(word);
-			word = "";
-		}
+	char delimiters[] = " \r\n";
+	char* tokenize = strtok(decoded_message.c_str(), tokens);
+	while(tokenize != NULL){
+		tokens.push_back(tokenize);
+		tokenize = strtok(NULL, delimiters);
 	}
 	return tokens;
 }
@@ -38,12 +35,32 @@ vector<string> decode(vector<uint8_t> d_http_req){
 	return parse(result);
 }
 
+int binder(int& sock_fd, struct sockaddr* my_addr, int addr_len){
+	if(bind(sock_fd, my_addr, addr_len) == -1){
+		perror("Error in binding socket!");
+		return 2;
+	}
+	return 0;
+}
+
+int listener(int& sock_fd){
+	if(listen(sock_fd,1) == -1){
+		perror("Error initiating listening!");
+		return 3;
+	}
+	return 0;
+}
+
+
+
 int main(int argc, char* argv[]) {
     struct addrinfo hints;
     struct addrinfo *result, *rp;
     int sfd, cfd;  // server file descriptor, client file descriptor
-    char buf[BUF_SIZE];
+	char buf[BUF_SIZE];
     
+	int socket_fd = socket(AF_INET, SOCK_STREAM, 
+
     string hostname;
     string port;
     string filedir;
@@ -117,4 +134,6 @@ int main(int argc, char* argv[]) {
     if (cfd == -1) {
         fprintf(stderr, "Unable to accept connection\n");
     }
+
+    
 }
