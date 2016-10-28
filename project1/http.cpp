@@ -81,7 +81,7 @@ ostream& operator<<(ostream& os, const HttpRequest& http_req) {
 // The Response implementation - Used to make generic HTTP Responses
 
 HttpResponse::HttpResponse()
-	: m_status(200), m_data_size(0);
+	: m_status(200), m_data_size(0)
 {}
 
 HttpResponse::HttpResponse(int status, vector<uint8_t> data)
