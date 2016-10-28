@@ -69,28 +69,25 @@ URL *createURL(string urlString) {
   url->object = urlString.substr(i, urlString.length() - i);
 
   // Find ip address of host
-  in_addr *ip = (in_addr *) gethostbyname(url->host.c_str())->h_addr;
-  url->ip = inet_ntoa(* ip);
+  url->ip = url->resolveDomain();
 
   return url;
 }
 
-Connection connectToURLHost(URL *url) {
-  Connection connection;
+Connection *connectToURLHost(URL *url) {
+  Connection *connection = new Connection;
 
-  connection.sfd = socket(AF_INET, SOCK_STREAM, 0);
+  connection->sfd = socket(AF_INET, SOCK_STREAM, 0);
 
-  memset(&connection.dest, 0, sizeof(connection.dest));
+  connection->dest.sin_family = AF_INET;
+  connection->dest.sin_port = htons(url->port);     // short, network byte order
+  connection->dest.sin_addr.s_addr = inet_addr(url->ip.c_str());
+  memset(connection->dest.sin_zero, '\0', sizeof(connection->dest.sin_zero));
 
-  connection.dest.sin_family = AF_INET;
-  connection.dest.sin_addr.s_addr = inet_addr(url->ip.c_str());
-  connection.dest.sin_port = htons(url->port);
-
-  connect(connection.sfd, (struct sockaddr *) &connection.dest, sizeof(struct sockaddr_in));
-    
-  connection.len = recv(connection.sfd, connection.buffer, BUF_SIZE, 0);
-  connection.buffer[connection.len] = '\0';
-  printf("Received %s (%d bytes).\n", connection.buffer, connection.len);
+  if (connect(connection->sfd, (struct sockaddr *) &connection->dest, sizeof(connection->dest)) == -1) {
+    perror("connect");
+    return NULL;
+  }
 
   return connection;
 }
@@ -117,11 +114,14 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Improper URL (%s)\n", argv[1]);
         exit(1);
       }
-      Connection connection = connectToURLHost(url);
+      Connection *connection = connectToURLHost(url);
+      if (connection == NULL) {
+        exit(1);
+      }
       HttpRequest request(*url);
-      sendHttpRequest(request, connection);
-      getHttpResponse(connection);
-      closeConnection(connection);
+      sendHttpRequest(request, *connection);
+      getHttpResponse(*connection);
+      closeConnection(*connection);
     } 
 
     return EXIT_SUCCESS;

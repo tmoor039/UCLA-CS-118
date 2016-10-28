@@ -1,6 +1,37 @@
 #include "http.h"
 using namespace std;
 
+// The URL implementation
+
+string URL::resolveDomain() {
+  struct addrinfo hints;
+  struct addrinfo* res;
+
+  // prepare hints
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET; // IPv4
+  hints.ai_socktype = SOCK_STREAM; // TCP
+
+  // get address
+  int status = 0;
+  if ((status = getaddrinfo(host.c_str(), "80", &hints, &res)) != 0) {
+    return "";
+  }
+
+  char ipstr[INET_ADDRSTRLEN] = {'\0'};
+  for(struct addrinfo* p = res; p != 0; p = p->ai_next) {
+    // convert address to IPv4 address
+    struct sockaddr_in* ipv4 = (struct sockaddr_in*)p->ai_addr;
+
+    // convert the IP to a string and print it:
+    inet_ntop(p->ai_family, &(ipv4->sin_addr), ipstr, sizeof(ipstr));
+  }
+      
+  freeaddrinfo(res); // free the linked list
+
+  return ipstr;
+}
+
 // The Message implementation - This is the base class
 
 HttpMessage::HttpMessage()

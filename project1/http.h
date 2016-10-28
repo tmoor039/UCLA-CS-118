@@ -3,13 +3,23 @@
 #include <vector>
 #include <unordered_map>
 
-struct URL{
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+class URL{
+  public:
 	URL()
 		: host("localhost"), object(""), port(80)
 	{}
 	URL(std::string v_object, std::string v_host="localhost", unsigned int v_port=80)
 		: host(v_host), object(v_object), port(v_port)
 	{}
+  std::string resolveDomain();
 	std::string host;
   std::string ip;
 	std::string object;
