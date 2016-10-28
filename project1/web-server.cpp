@@ -1,15 +1,24 @@
 #include <iostream>
+#include <vector>
+#include <string>
 using namespace std;
 
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <netdb.h>
 
 #define BUF_SIZE 1000
+
+#define HOST_NAME 1
+#define PORT 2 
+#define FILE_DIR 3
+
+vector<string> decode(vector<uint8_t> d_http_req){
+
+}
 
 int main(int argc, char* argv[]) {
     struct addrinfo hints;
@@ -28,14 +37,14 @@ int main(int argc, char* argv[]) {
     }
     
     if (argc == 4) {
-        hostname = argv[1];
-        port = argv[2];
-        filedir = argv[3];
+        hostname = argv[HOST_NAME];
+        port = argv[PORT];
+        filedir = argv[FILE_DIR];
     }
     else {  // default arguments
         hostname = "localhost";
         port = "4000";
-        filedir = "/tmp";
+        filedir = ".";
     }
 
     memset(&hints, 0, sizeof(struct addrinfo));
