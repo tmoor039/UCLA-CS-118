@@ -76,6 +76,31 @@ short string_to_short(string input){
 	return (unsigned short)i;
 }
 
+// Receive data from file descriptor fd and save data in vector.
+vector<uint8_t> receive_data(int fd) {
+    char buf[BUF_SIZE];
+    vector<uint8_t> data;
+	while(1) {
+        memset(buf, '\0', sizeof(buf));
+
+        int length = recv(fd, buf, BUF_SIZE, 0);
+        if (length == -1) {
+            perror("recv error\n");
+        }        
+        // finished receiving file
+        else if (length == 0) {
+            break;
+        }
+        for (int i = 0; i < BUF_SIZE; i++) {
+            if (buf[i] == '\0') {
+                break;
+            }
+            data.push_back(buf[i]);
+        }
+	}
+    return data;
+} 
+
 void get_request(char* buf, vector<uint8_t>& data){
     
 }
@@ -125,27 +150,8 @@ int main(int argc, char* argv[]) {
 	inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
 	cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
 
-	char reqBuf[BUF_SIZE];  // buffer for the request
-	vector<uint8_t> requestData;
-	while(1) {
-        memset(reqBuf, '\0', sizeof(reqBuf));
-
-        int length = recv(client_fd, reqBuf, BUF_SIZE, 0);
-        if (length == -1) {
-            perror("recv error\n");
-        }        
-        // finished receiving file
-        else if (length == 0) {
-            break;
-        }
-        for (int i = 0; i < BUF_SIZE; i++) {
-            if (reqBuf[i] == '\0') {
-                break;
-            }
-            requestData.push_back(reqBuf[i]);
-        }
-	}
-    string URL = decode(requestData)[1];
+    vector<uint8_t> requestMessage = receive_data(client_fd);
+    string URL = decode(requestMessage)[1];
 
     // testing
     cout << URL << endl;
