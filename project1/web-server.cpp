@@ -4,6 +4,7 @@
 #include <sstream>
 #include <fstream>
 #include <iterator>
+#include <thread>
 using namespace std;
 
 #include <sys/types.h>
@@ -118,7 +119,7 @@ vector<uint8_t> receive_data(int fd) {
 } 
 
 string make_fullpath(string file_dir, string req_obj){
-	return file_dir + req_obj.substr(0, string::npos);
+	return file_dir + req_obj.substr(1, string::npos);
 }
 
 int grab_file_data(vector<uint8_t>& data, string filename){
@@ -151,6 +152,26 @@ void send_data(int& sock_fd, HttpResponse* resp){
 		exit(7);
 	}
 	delete[] buf;
+}
+
+void data_transmission(int client_fd, string filedir, char* ipstr){
+		vector<uint8_t> requestMessage = receive_data(client_fd);
+		vector<string> header = decode(requestMessage);
+		string filename = make_fullpath(filedir, header[1]);
+		vector<uint8_t> data;
+		HttpResponse* response;
+		if(grab_file_data(data, filename) == -1){
+			response = new HttpResponse(404, data);
+		} else {
+			response = new HttpResponse(200, data);
+		}
+		if (bad_request(header)) {
+			response->set_status(400);
+		}
+		cout << "Sent the file: " << filename << " to " << ipstr << endl;
+		send_data(client_fd, response);
+		delete response;
+		close(client_fd);
 }
 
 int main(int argc, char* argv[]) {
@@ -189,28 +210,19 @@ int main(int argc, char* argv[]) {
 	
 	binder(socket_fd, (struct addrinfo*)& addr, sizeof(addr));
 	listener(socket_fd);
-	
-	struct sockaddr_in clientAddr;
-	socklen_t clientAddrSize = sizeof(clientAddr);
-	int client_fd = acceptor(socket_fd, (struct sockaddr*)&clientAddr, &clientAddrSize);
 
-	char ipstr[INET_ADDRSTRLEN] = {'\0'};
-	inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
-	cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
+	while(1){
+		struct sockaddr_in clientAddr;
+		socklen_t clientAddrSize = sizeof(clientAddr);
+		int clientFd = acceptor(socket_fd, (struct sockaddr*)&clientAddr, &clientAddrSize);
 
-    vector<uint8_t> requestMessage = receive_data(client_fd);
-    vector<string> header = decode(requestMessage);
-    string filename = make_fullpath(filedir, header[1]);
-    vector<uint8_t> data;
-    HttpResponse* response;
-	if(grab_file_data(data, filename) == -1){
-		response = new HttpResponse(404, data);
-	} else {
-		response = new HttpResponse(200, data);
+		char ipstr[INET_ADDRSTRLEN] = {'\0'};
+		inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
+		cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
+		
+		thread t(data_transmission, clientFd, filedir, ipstr);
+		if(t.joinable()){
+			t.join();
+		}
 	}
-    if (bad_request(header)) {
-        response->set_status(400);
-    }
-    cout << filename << endl;
-	send_data(client_fd, response);
 }
