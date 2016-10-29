@@ -98,12 +98,13 @@ Connection *connectToURLHost(URL *url) {
 
 int sendHttpRequest(HttpRequest *request, Connection *connection) {
   std::vector<uint8_t> data = request->encode();
+  uint8_t buf[data.size()];
 
   for (int i = 0; i < data.size(); i++) {
-    std::cout << data[i];
+    buf[i] = data[i];
   }
 
-  if (send(connection->sfd, &data, data.size(), 0) == -1) {
+  if (send(connection->sfd, &buf, data.size(), 0) == -1) {
     perror("send");
     return 1;
   }
