@@ -108,7 +108,7 @@ vector<uint8_t> receive_data(int fd) {
 } 
 
 string make_fullpath(string file_dir, string req_obj){
-	return file_dir + req_obj.substr(1, string::npos);
+	return file_dir + req_obj.substr(0, string::npos);
 }
 
 int grab_file_data(vector<uint8_t>& data, string filename){
@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
     vector<uint8_t> data;
     HttpResponse* response;
 	if(grab_file_data(data, filename) == -1){
-		response = new HttpResponse(400, data);
+		response = new HttpResponse(404, data);
 	} else {
 		response = new HttpResponse(200, data);
 	}
