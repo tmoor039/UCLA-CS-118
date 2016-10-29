@@ -20,6 +20,7 @@ class URL{
 		: host(v_host), object(v_object), port(v_port)
 	{}
   std::string resolveDomain();
+  std::string url;
 	std::string host;
   std::string ip;
 	std::string object;

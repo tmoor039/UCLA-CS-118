@@ -25,6 +25,8 @@ struct Connection {
 URL *createURL(std::string urlString) {
   URL *url = new URL;
 
+  url->url = urlString;
+
   // Find the starting point after '://'
   bool foundFirst = false;
   int i = 0;
@@ -116,19 +118,21 @@ int sendHttpRequest(HttpRequest *request, Connection *connection) {
 int getHttpResponse(Connection *connection, URL *url) {
   uint8_t buf[BUF_SIZE] = {0};
   int count = 0;
-  bool isData = false;
+  bool isData = false, statusCode = false, statusMessage = false;
+  std::string code = "", message = "", word = "";
   
+  // Prepare output file
   std::string path = url->object;
   std::string name = path.substr(path.find_last_of("/") + 1);
   if (name.empty()) {
     name = "index.html";
   }
   std::ofstream outputFile;
-  outputFile.open(name);
 
   while (true) {
     memset(buf, '\0', sizeof(buf));
 
+    // Read from socket
     int length = recv(connection->sfd, buf, BUF_SIZE, 0);
     if (length == -1) {
       perror("recv");
@@ -137,16 +141,27 @@ int getHttpResponse(Connection *connection, URL *url) {
       outputFile.close();
       return 0;
     }
+
     for (int i = 0; i < BUF_SIZE; i++) {
+      
+      // End of buffer contents
       if (buf[i] == '\0') {
         break;
-      } else if (buf[i] == '\r') {
+      } 
+      
+      // Carriage return
+      else if (buf[i] == '\r') {
+        word = "";
         if (count == 2) {
           count = 3;
         } else {
           count = 1;
         }
-      } else if (buf[i] == '\n') {
+      }
+      
+      // Newline
+      else if (buf[i] == '\n') {
+        word = "";
         if (count == 1) {
           count = 2;
         } else if (count == 3) {
@@ -154,9 +169,42 @@ int getHttpResponse(Connection *connection, URL *url) {
         } else {
           count = 0;
         }
-      } else if (isData == false) {
+      }
+      
+      // Space
+      else if (buf[i] == ' ') {
+        if (word.substr(0, 5) == "HTTP/") {
+          statusCode = true;
+        }
+        
+        // Get status code
+        else if (statusCode) {
+          code = word;
+          if (code == "200") {
+            message = "OK"; 
+          } else if (code == "400") {
+            message = "Bad request";
+          } else if (code == "404") {
+            message = "Not found";
+          }
+          std::cout << url->url << ": " << code << " " << message << std::endl;
+          if (code != "200") {
+            return 1;
+          }
+          outputFile.open(name);
+          statusCode = false;
+        }
+        word = "";
+      }
+      
+      // Other non-data contents
+      else if (isData == false) {
         count = 0;
-      } else {
+        word += buf[i];
+      }
+      
+      // Data
+      else {
         outputFile << buf[i];
       }
     }
