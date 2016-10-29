@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <sstream>
+#include <fstream>
 
 #define BUF_SIZE 1000
 
@@ -112,40 +113,54 @@ int sendHttpRequest(HttpRequest *request, Connection *connection) {
   return 0;
 }
 
-HttpResponse *getHttpResponse(Connection *connection) {
-  bool isEnd = false;
-  std::string input;
+int getHttpResponse(Connection *connection, URL *url) {
   uint8_t buf[BUF_SIZE] = {0};
-  std::stringstream ss;
-  std::vector<uint8_t> data;
+  int count = 0;
+  bool isData = false;
   
-  while (!isEnd) {
+  std::string path = url->object;
+  std::string name = path.substr(path.find_last_of("/") + 1);
+  if (name.empty()) {
+    name = "index.html";
+  }
+  std::ofstream outputFile;
+  outputFile.open(name);
+
+  while (true) {
     memset(buf, '\0', sizeof(buf));
 
     int length = recv(connection->sfd, buf, BUF_SIZE, 0);
     if (length == -1) {
       perror("recv");
-      return NULL;
+      return 1;
     } else if (length == 0) {
-      return NULL;      
+      outputFile.close();
+      return 0;
     }
     for (int i = 0; i < BUF_SIZE; i++) {
       if (buf[i] == '\0') {
         break;
+      } else if (buf[i] == '\r') {
+        if (count == 2) {
+          count = 3;
+        } else {
+          count = 1;
+        }
+      } else if (buf[i] == '\n') {
+        if (count == 1) {
+          count = 2;
+        } else if (count == 3) {
+          isData = true;
+        } else {
+          count = 0;
+        }
+      } else if (isData == false) {
+        count = 0;
+      } else {
+        outputFile << buf[i];
       }
-      data.push_back(buf[i]);
     }
-    ss << buf << std::endl;
-    std::cout << "echo: ";
-    std::cout << buf << std::endl;
-
-    if (ss.str() == "close\n")
-      break;
-
-    ss.str("");
   }
-
-  return NULL;
 }
 
 void closeConnection(Connection *connection) {
@@ -162,12 +177,15 @@ int main(int argc, char* argv[]) {
       URL *url = createURL(argv[i]);
       if (url == NULL) {
         fprintf(stderr, "Improper URL (%s)\n", argv[1]);
-        exit(1);
+        delete url;
+        continue;
       }
 
       Connection *connection = connectToURLHost(url);
       if (connection == NULL) {
-        exit(1);
+        delete url;
+        delete connection;
+        continue;
       }
 
       HttpRequest request(*url);
@@ -175,15 +193,21 @@ int main(int argc, char* argv[]) {
       int status;
       status = sendHttpRequest(&request, connection);
       if (status != 0) {
-        exit(1);
+        delete url;
+        delete connection;
+        continue;
       }
 
-      HttpResponse *response = getHttpResponse(connection);
-      if (response == NULL) {
-        exit(1);
+      status = getHttpResponse(connection, url);
+      if (status != 0) {
+        delete url;
+        delete connection;
+        continue;
       }
 
       closeConnection(connection);
+      delete url;
+      delete connection;
     } 
 
     return EXIT_SUCCESS;
