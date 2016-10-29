@@ -201,6 +201,12 @@ int main(int argc, char* argv[]) {
 		filedir = ".";
 	}
 
+	int reconnect = 1;
+	if(setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reconnect, sizeof(int)) == -1) {
+		perror("Error making socket reusable!");
+		exit(8);
+	}
+
 	URL host_url("", hostname, (unsigned)stoi(port));
 
 	struct sockaddr_in addr;
