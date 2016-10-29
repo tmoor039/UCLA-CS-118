@@ -80,7 +80,8 @@ short string_to_short(string input){
 vector<uint8_t> receive_data(int fd) {
     char buf[BUF_SIZE];
     vector<uint8_t> data;
-	while(1) {
+    bool endPlease = false;
+	while(!endPlease) {
         memset(buf, '\0', sizeof(buf));
 
         int length = recv(fd, buf, BUF_SIZE, 0);
@@ -94,9 +95,11 @@ vector<uint8_t> receive_data(int fd) {
         }
         for (int i = 0; i < BUF_SIZE; i++) {
             if (buf[i] == '\0') {
+                endPlease = true;
                 break;
             }
             data.push_back(buf[i]);
+            std::cout << buf[i];
         }
 	}
     return data;
