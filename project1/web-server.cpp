@@ -1,6 +1,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <sstream>
+#include <fstream>
+#include <iterator>
 using namespace std;
 
 #include <sys/types.h>
@@ -39,7 +42,7 @@ vector<string> parse(string decoded_message){
 vector<string> decode(vector<uint8_t> d_http_req){
 	string result = "";
 	for(uint8_t byte : d_http_req){
-		result += char(byte);
+		result += (char)byte;
 	}
 	return parse(result);
 }
@@ -80,8 +83,8 @@ short string_to_short(string input){
 vector<uint8_t> receive_data(int fd) {
     char buf[BUF_SIZE];
     vector<uint8_t> data;
-    bool endPlease = false;
-	while(!endPlease) {
+    bool isEnd = false;
+	while(!isEnd) {
         memset(buf, '\0', sizeof(buf));
 
         int length = recv(fd, buf, BUF_SIZE, 0);
@@ -95,18 +98,49 @@ vector<uint8_t> receive_data(int fd) {
         }
         for (int i = 0; i < BUF_SIZE; i++) {
             if (buf[i] == '\0') {
-                endPlease = true;
+                isEnd = true;
                 break;
             }
             data.push_back(buf[i]);
-            std::cout << buf[i];
         }
 	}
     return data;
 } 
 
-void get_request(char* buf, vector<uint8_t>& data){
-    
+string make_fullpath(string file_dir, string req_obj){
+	return file_dir + req_obj.substr(1, string::npos);
+}
+
+int grab_file_data(vector<uint8_t>& data, string filename){
+	ifstream file(filename);
+	if(file.fail()){
+		perror("Error opening file!");
+		return -1;
+	}
+	ostringstream ss;
+	ss << file.rdbuf();
+	const string& s = ss.str();
+	vector<char> vec(s.begin(), s.end());
+	// Use for testing by outputting the contents of file to stdout
+	// std::copy(vec.begin(), vec.end(), std::ostream_iterator<char>(std::cout));
+	for(char c : vec){
+		data.push_back((uint8_t)c);
+	}
+	return 1;
+}
+
+void send_data(int& sock_fd, HttpResponse* resp){
+	vector<uint8_t> enc_data = resp->encode();
+	size_t data_size = enc_data.size();
+	uint8_t* buf = new uint8_t[data_size];
+	for(int i = 0; i < data_size; i++){
+		buf[i] = enc_data[i];
+	}
+	if(send(sock_fd, buf, enc_data.size(), 0) == -1){
+		perror("Error sending data!");
+		exit(7);
+	}
+	delete[] buf;
 }
 
 int main(int argc, char* argv[]) {
@@ -155,8 +189,15 @@ int main(int argc, char* argv[]) {
 	cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
 
     vector<uint8_t> requestMessage = receive_data(client_fd);
-    string URL = decode(requestMessage)[1];
-
-    // testing
-    cout << URL << endl;
+    vector<string> header = decode(requestMessage);
+    string filename = make_fullpath(filedir, header[1]);
+    vector<uint8_t> data;
+    HttpResponse* response;
+	if(grab_file_data(data, filename) == -1){
+		response = new HttpResponse(400, data);
+	} else {
+		response = new HttpResponse(200, data);
+	}
+    cout << filename << endl;
+	send_data(client_fd, response);
 }
