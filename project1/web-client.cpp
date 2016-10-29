@@ -98,7 +98,6 @@ Connection *connectToURLHost(URL *url) {
 
 int sendHttpRequest(HttpRequest *request, Connection *connection) {
   std::vector<uint8_t> data = request->encode();
-  std::string input = "Hello, world!";
 
   for (int i = 0; i < data.size(); i++) {
     std::cout << data[i];
@@ -115,19 +114,19 @@ int sendHttpRequest(HttpRequest *request, Connection *connection) {
 HttpResponse *getHttpResponse(Connection *connection) {
   bool isEnd = false;
   std::string input;
-  char buf[BUF_SIZE] = {0};
+  uint8_t buf[BUF_SIZE] = {0};
   std::stringstream ss;
   std::vector<uint8_t> data;
   
   while (!isEnd) {
     memset(buf, '\0', sizeof(buf));
 
-    int length = recv(connection->sfd, buf, 20, 0);
+    int length = recv(connection->sfd, buf, BUF_SIZE, 0);
     if (length == -1) {
       perror("recv");
       return NULL;
     } else if (length == 0) {
-      
+      return NULL;      
     }
     for (int i = 0; i < BUF_SIZE; i++) {
       if (buf[i] == '\0') {
