@@ -45,7 +45,7 @@ vector<string> decode(vector<uint8_t> d_http_req){
 }
 
 void binder(int& sock_fd, struct addrinfo* my_addr, int addr_len){
-	if(::bind(sock_fd, (struct sockaddr*)& my_addr, addr_len) == -1){
+	if(::bind(sock_fd, (struct sockaddr*)& *my_addr, addr_len) == -1){
 		perror("Error in binding socket!");
 		exit(2);
 	}
