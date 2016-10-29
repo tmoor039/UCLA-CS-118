@@ -79,6 +79,16 @@ short string_to_short(string input){
 	return (unsigned short)i;
 }
 
+bool bad_request(vector<string>& request) {
+    if (request[0].compare("GET") != 0 && request[0].compare("POST") != 0) {
+        return true;
+    }   
+    else if (request[2].compare("HTTP/1.0") != 0 && request[2].compare("HTTP/1.1") != 0) {
+        return true;
+    }
+    return false;
+}
+
 // Receive data from file descriptor fd and save data in vector.
 vector<uint8_t> receive_data(int fd) {
     char buf[BUF_SIZE];
@@ -198,6 +208,9 @@ int main(int argc, char* argv[]) {
 	} else {
 		response = new HttpResponse(200, data);
 	}
+    if (bad_request(header)) {
+        response->set_status(400);
+    }
     cout << filename << endl;
 	send_data(client_fd, response);
 }
