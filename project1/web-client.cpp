@@ -26,6 +26,7 @@ URL *createURL(std::string urlString) {
   URL *url = new URL;
 
   url->url = urlString;
+  url->port = 80;
 
   // Find the starting point after '://'
   bool foundFirst = false;
@@ -44,10 +45,14 @@ URL *createURL(std::string urlString) {
   }
 
   // Find host name
+  bool noPort = false;
   std::string host = "";
   for (; i < urlString.length(); i++) {
     if (urlString[i] == ':') {
       i++;
+      break;
+    } else if (urlString[i] == '/') {
+      noPort = true;
       break;
     }
     host += urlString[i];
@@ -58,14 +63,16 @@ URL *createURL(std::string urlString) {
   }
 
   // Find port number
-  std::string port = "";
-  for (; i < urlString.length(); i++) {
-    if (urlString[i] == '/') {
-      break;
+  if (noPort == false) {
+    std::string port = "";
+    for (; i < urlString.length(); i++) {
+      if (urlString[i] == '/') {
+        break;
+      }
+      port += urlString[i];
     }
-    port += urlString[i];
+    url->port = atoi(port.c_str());
   }
-  url->port = atoi(port.c_str());
 
   // Find object path
   url->object = urlString.substr(i, urlString.length() - i);
