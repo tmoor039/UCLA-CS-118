@@ -77,7 +77,7 @@ short string_to_short(string input){
 }
 
 void get_request(char* buf, vector<uint8_t>& data){
-
+    
 }
 
 int main(int argc, char* argv[]) {
@@ -125,16 +125,28 @@ int main(int argc, char* argv[]) {
 	inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
 	cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
 
-	char data_buffer[BUF_SIZE] = {0};
-	bool is_end = false;
-	vector<uint8_t> request_data;
-	while(!is_end){
-		// Fill the buffer with the request
-		get_request(data_buffer, request_data);
-		// Parse and decode the request
-		vector<string> temp = decode(request_data);
+	char reqBuf[BUF_SIZE];  // buffer for the request
+	vector<uint8_t> requestData;
+	while(1) {
+        memset(reqBuf, '\0', sizeof(reqBuf));
 
-		is_end = false;
+        int length = recv(client_fd, reqBuf, BUF_SIZE, 0);
+        if (length == -1) {
+            perror("recv error\n");
+        }        
+        // finished receiving file
+        else if (length == 0) {
+            break;
+        }
+        for (int i = 0; i < BUF_SIZE; i++) {
+            if (reqBuf[i] == '\0') {
+                break;
+            }
+            requestData.push_back(reqBuf[i]);
+        }
 	}
-		
+    string URL = decode(requestData)[1];
+
+    // testing
+    cout << URL << endl;
 }

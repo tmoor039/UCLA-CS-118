@@ -61,8 +61,7 @@ HttpRequest::HttpRequest(URL url, string method)
 // Encode the data as bytes
 vector<uint8_t> HttpRequest::encode(){
 	string cr_nl = "\r\n";
-	string final_message = m_method + " " + m_url.object + " " + m_version + cr_nl +
-						   "Host: " + m_url.host + cr_nl + cr_nl;
+	string final_message = m_method + " " + m_url.object + " " + m_version + cr_nl + cr_nl;
 	vector<uint8_t> wire(final_message.begin(), final_message.end());
 
 	return wire;
