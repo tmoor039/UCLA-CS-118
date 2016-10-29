@@ -124,8 +124,8 @@ int sendHttpRequest(HttpRequest *request, Connection *connection) {
 
 int getHttpResponse(Connection *connection, URL *url) {
   uint8_t buf[BUF_SIZE] = {0};
-  int count = 0;
-  bool isData = false, statusCode = false, statusMessage = false;
+  int count = 0, length = BUF_SIZE;
+  bool isData = false, getCode = false, getMessage = false, getLength = false;
   std::string code = "", message = "", word = "";
   
   // Prepare output file
@@ -150,69 +150,82 @@ int getHttpResponse(Connection *connection, URL *url) {
     }
 
     for (int i = 0; i < BUF_SIZE; i++) {
-      
-      // End of buffer contents
-      if (buf[i] == '\0') {
-        break;
-      } 
-      
-      // Carriage return
-      else if (buf[i] == '\r') {
-        word = "";
-        if (count == 2) {
-          count = 3;
-        } else {
-          count = 1;
-        }
-      }
-      
-      // Newline
-      else if (buf[i] == '\n') {
-        word = "";
-        if (count == 1) {
-          count = 2;
-        } else if (count == 3) {
-          isData = true;
-        } else {
-          count = 0;
-        }
-      }
-      
-      // Space
-      else if (buf[i] == ' ') {
-        if (word.substr(0, 5) == "HTTP/") {
-          statusCode = true;
+      if (isData == false) {
+        if (buf[i] == '\r' || buf[i] == '\n' || buf[i] == ' ') {
+          if (word.substr(0, 5) == "HTTP/") {
+            getCode = true;
+          }
+          
+          else if (getCode) {
+            code = word;
+            getCode = false;
+            getMessage = true;
+          } else if (getMessage) {
+            while (buf[i] != '\r' && buf[i] != '\n') {
+              word += buf[i];
+              i++;
+            }
+            message = word;
+            std::cout << url->url << ": " << code << " " << message << std::endl;
+            if (code != "200") {
+              return 1;
+            }
+            outputFile.open(name);
+            getMessage = false;
+          } else if (getLength) {
+            length = atoi(word.c_str());
+            getLength = false;
+          } else if (word == "Content-Length:") {
+            getLength = true;
+          }
+          word = ""; 
         }
         
-        // Get status code
-        else if (statusCode) {
-          code = word;
-          if (code == "200") {
-            message = "OK"; 
-          } else if (code == "400") {
-            message = "Bad request";
-          } else if (code == "404") {
-            message = "Not found";
+        // End of buffer contents
+        if (buf[i] == '\0') {
+          break;
+        } 
+        
+        // Carriage return
+        else if (buf[i] == '\r') {
+          if (count == 2) {
+            count = 3;
+          } else {
+            count = 1;
           }
-          std::cout << url->url << ": " << code << " " << message << std::endl;
-          if (code != "200") {
-            return 1;
-          }
-          outputFile.open(name);
-          statusCode = false;
         }
-        word = "";
-      }
-      
-      // Other non-data contents
-      else if (isData == false) {
-        count = 0;
-        word += buf[i];
+        
+        // Newline
+        else if (buf[i] == '\n') {
+          if (count == 1) {
+            count = 2;
+          } else if (count == 3) {
+            isData = true;
+          } else {
+            count = 0;
+          }
+        }
+
+        // Space (don't delete this)
+        else if (buf[i] == ' ') {
+        }
+        
+        // Other non-data contents
+        else {
+          count = 0;
+          word += buf[i];
+        }
       }
       
       // Data
-      else {
+      else if (length > 0) {
         outputFile << buf[i];
+        length--;
+      }
+
+      else {
+        outputFile.close();
+        return 0;
       }
     }
   }
