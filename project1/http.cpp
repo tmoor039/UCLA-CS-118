@@ -93,9 +93,8 @@ HttpResponse::HttpResponse(int status, vector<uint8_t> data)
 // Encode the data as bytes
 vector<uint8_t> HttpResponse::encode(){
 	string cr_nl = "\r\n";
-	string final_message = to_string(m_data_size) + cr_nl + 
-		m_version + to_string(m_status) + cr_nl + m_connection +
-		cr_nl + cr_nl;
+	string final_message =  m_version + " " + to_string(m_status) + " " + get_code(m_status) + cr_nl + m_connection +
+		cr_nl + "Content-Length: " + to_string(m_data_size) + cr_nl + cr_nl;
 	vector<uint8_t> wire(final_message.begin(), final_message.end());
 	wire.insert(wire.end(), m_data.begin(), m_data.end());
 
