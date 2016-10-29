@@ -5,6 +5,7 @@ using namespace std;
 
 #include <sys/types.h>
 #include <stdio.h>
+#include <arpa/inet.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
@@ -21,25 +22,30 @@ using namespace std;
 
 vector<string> parse(string decoded_message){
 	vector<string> tokens;
-	char delimiters[] = " \r\n";
-	char* tokenize = strtok(decoded_message.c_str(), tokens);
-	while(tokenize != NULL){
-		tokens.push_back(tokenize);
-		tokenize = strtok(NULL, delimiters);
+	size_t msg_size = decoded_message.size();
+	string word = "";
+	for(int i = 0; i < msg_size; i++){
+		if(decoded_message[i] != ' ' || decoded_message[i] != '\r'
+		   || decoded_message[i] != '\n'){
+		   	word += decoded_message[i];
+		} else {
+			tokens.push_back(word);
+			word = "";
+		}
 	}
 	return tokens;
 }
 
 vector<string> decode(vector<uint8_t> d_http_req){
 	string result = "";
-	for(uint8_t byte : http_req){
+	for(uint8_t byte : d_http_req){
 		result += char(byte);
 	}
 	return parse(result);
 }
 
-void binder(int& sock_fd, struct sockaddr* my_addr, int addr_len){
-	if(bind(sock_fd, my_addr, addr_len) == -1){
+void binder(int& sock_fd, struct addrinfo* my_addr, int addr_len){
+	if(::bind(sock_fd, (struct sockaddr*)& my_addr, addr_len) == -1){
 		perror("Error in binding socket!");
 		exit(2);
 	}
@@ -52,8 +58,8 @@ void listener(int& sock_fd){
 	}
 }
 
-int acceptor(int& sock_fd, struct sockaddr* cli_addr, int* addrlen){
-	int cli_fd = accept(socket_fd, cli_addr, addrlen);
+int acceptor(int& sock_fd, struct sockaddr* cli_addr, socklen_t* addrlen){
+	int cli_fd = accept(sock_fd, cli_addr, addrlen);
 	if(cli_fd == -1){
 		perror("Error in accepting request!");
 		exit(4);
@@ -68,6 +74,10 @@ short string_to_short(string input){
 		exit(5);
 	}
 	return (unsigned short)i;
+}
+
+void get_request(char* buf, vector<uint8_t>& data){
+
 }
 
 int main(int argc, char* argv[]) {
@@ -101,7 +111,7 @@ int main(int argc, char* argv[]) {
     	perror("Error resolving domain name!");
     	exit(6);
 	}
-    addr.sin_addr.s_addr = inet_addr(host_url.resolveDomain());
+    addr.sin_addr.s_addr = inet_addr((host_url.resolveDomain()).c_str());
     memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
 	
 	binder(socket_fd, (struct addrinfo*)& addr, sizeof(addr));
@@ -113,51 +123,18 @@ int main(int argc, char* argv[]) {
 
 	char ipstr[INET_ADDRSTRLEN] = {'\0'};
 	inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
-	cout << "Accept a connection from: " << ipstr << ":" << ntohs
+	cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
 
-    // Let socket listen for incoming connections.
-    if (listen(sfd, 1) == -1) {
-        fprintf(stderr, "Failed to listen on socket %d\n", sfd);
-        exit(1);
-    }
+	char data_buffer[BUF_SIZE] = {0};
+	bool is_end = false;
+	vector<uint8_t> request_data;
+	while(!is_end){
+		// Fill the buffer with the request
+		get_request(data_buffer, request_data);
+		// Parse and decode the request
+		vector<string> temp = decode(request_data);
 
-    freeaddrinfo(result);  
-
-    sockaddr_in clientAddr;
-    socklen_t clientAddrSize;
-    cfd = accept(sfd, (sockaddr *) &clientAddr, &clientAddrSize);
-    if (cfd == -1) {
-        fprintf(stderr, "Unable to accept connection\n");
-    }
-    // receive request message
-    int nBytes = recv(sfd, buf, BUF_SIZE, 0);
-    if (nBytes < 0) {
-        fprintf(stderr, "Failed to receive message\n");
-    }
-    
-    // save request message as vector
-    vector<uint8_t> request;
-    for (int i = 0; i < nBytes; i++) {
-        request.push_back(buf[i]);
-    }
-
-    // decode request message
-    vector<string> requestParsed = decode(request);
-
-    string URL = requestParsed[1];
-    
-    // open the web page
-    FILE* fp = fopen(URL, "r");
-    
-    // obtain file size
-    fseek (fp , 0 , SEEK_END);
-    int fsize = ftell (fp);
-    rewind (fp);
-
-    // allocate memory for data from web page and read data.
-    char* data;
-    data = new char[size];
-    fread(data, 1, fsize, fp);    
-
-
+		is_end = false;
+	}
+		
 }
