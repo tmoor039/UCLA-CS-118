@@ -143,7 +143,7 @@ int grab_file_data(vector<uint8_t>& data, string filename){
 	return 1;
 }
 
-void send_data(int& sock_fd, HttpResponse* resp){
+int send_data(int& sock_fd, HttpResponse* resp){
 	vector<uint8_t> enc_data = resp->encode();
 	size_t data_size = enc_data.size();
 	uint8_t* buf = new uint8_t[data_size];
@@ -155,6 +155,7 @@ void send_data(int& sock_fd, HttpResponse* resp){
 		exit(7);
 	}
 	delete[] buf;
+	return 1;
 }
 
 void data_transmission(int client_fd, string filedir, char* ipstr){
@@ -171,46 +172,47 @@ void data_transmission(int client_fd, string filedir, char* ipstr){
 		if (bad_request(header)) {
 			response->set_status(400);
 		}
-		cout << "Sent the file: " << filename << " to " << ipstr << endl;
-		send_data(client_fd, response);
+		if(send_data(client_fd, response) == 1){
+			cout << "Sent the file: " << filename << " to " << ipstr << endl;
+		}
 		delete response;
 		close(client_fd);
 }
 
 int main(int argc, char* argv[]) {
-    // Create a socket file descriptor for IPv4 and TCP
+	// Create a socket file descriptor for IPv4 and TCP
 	int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
 
-    string hostname, port, filedir;
+	string hostname, port, filedir;
 
-    // require 0 or 3 arguments
-    if (argc != 1 && argc != 4) {
-        fprintf(stderr, "Usage: %s [hostname] [port] [file-dir]\n", argv[0]);
-        exit(1);
-    }
-    
-    if (argc == 4) {
-        hostname = argv[HOST_NAME];
-        port = argv[PORT];
-        filedir = argv[FILE_DIR];
-    } else {  // default arguments
-        hostname = "localhost";
-        port = "4000";
-        filedir = ".";
-    }
+	// require 0 or 3 arguments
+	if (argc != 1 && argc != 4) {
+		fprintf(stderr, "Usage: %s [hostname] [port] [file-dir]\n", argv[0]);
+		exit(1);
+	}
+
+	if (argc == 4) {
+		hostname = argv[HOST_NAME];
+		port = argv[PORT];
+		filedir = argv[FILE_DIR];
+	} else {  // default arguments
+		hostname = "localhost";
+		port = "4000";
+		filedir = ".";
+	}
 
 	URL host_url("", hostname, (unsigned)stoi(port));
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(string_to_short(port));
-    if(host_url.resolveDomain() == ""){
-    	perror("Error resolving domain name!");
-    	exit(6);
+	struct sockaddr_in addr;
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(string_to_short(port));
+	if(host_url.resolveDomain() == ""){
+		perror("Error resolving domain name!");
+		exit(6);
 	}
-    addr.sin_addr.s_addr = inet_addr((host_url.resolveDomain()).c_str());
-    memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
-	
+	addr.sin_addr.s_addr = inet_addr((host_url.resolveDomain()).c_str());
+	memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
+
 	binder(socket_fd, (struct addrinfo*)& addr, sizeof(addr));
 	listener(socket_fd);
 
@@ -222,10 +224,8 @@ int main(int argc, char* argv[]) {
 		char ipstr[INET_ADDRSTRLEN] = {'\0'};
 		inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
 		cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
-		
+
 		thread t(data_transmission, clientFd, filedir, ipstr);
-		if(t.joinable()){
-			t.join();
-		}
+		t.detach();
 	}
 }
