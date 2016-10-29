@@ -124,7 +124,7 @@ int sendHttpRequest(HttpRequest *request, Connection *connection) {
 
 int getHttpResponse(Connection *connection, URL *url) {
   uint8_t buf[BUF_SIZE] = {0};
-  int count = 0, length = BUF_SIZE;
+  int count = 0, contentLength = BUF_SIZE;
   bool isData = false, getCode = false, getMessage = false, getLength = false;
   std::string code = "", message = "", word = "";
   
@@ -173,7 +173,7 @@ int getHttpResponse(Connection *connection, URL *url) {
             outputFile.open(name);
             getMessage = false;
           } else if (getLength) {
-            length = atoi(word.c_str());
+            contentLength = atoi(word.c_str());
             getLength = false;
           } else if (word == "Content-Length:") {
             getLength = true;
@@ -218,7 +218,7 @@ int getHttpResponse(Connection *connection, URL *url) {
       }
       
       // Data
-      else if (length > 0) {
+      else if (contentLength > 0) {
         outputFile << buf[i];
         length--;
       }
