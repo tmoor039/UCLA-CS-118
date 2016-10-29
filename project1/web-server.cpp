@@ -25,8 +25,8 @@ vector<string> parse(string decoded_message){
 	size_t msg_size = decoded_message.size();
 	string word = "";
 	for(int i = 0; i < msg_size; i++){
-		if(decoded_message[i] != ' ' || decoded_message[i] != '\r'
-		   || decoded_message[i] != '\n'){
+		if(decoded_message[i] != ' ' && decoded_message[i] != '\r'
+		   && decoded_message[i] != '\n'){
 		   	word += decoded_message[i];
 		} else {
 			tokens.push_back(word);
@@ -86,6 +86,7 @@ vector<uint8_t> receive_data(int fd) {
         int length = recv(fd, buf, BUF_SIZE, 0);
         if (length == -1) {
             perror("recv error\n");
+            exit(1);
         }        
         // finished receiving file
         else if (length == 0) {
