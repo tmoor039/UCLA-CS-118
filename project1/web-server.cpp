@@ -114,6 +114,9 @@ bool receive_data(int fd, vector<uint8_t>& data) {
 string make_fullpath(string file_dir, string req_obj){
   if (!file_dir.empty() and file_dir[file_dir.length() - 1] != '/') {
     file_dir += '/';
+  } 
+  if(req_obj == "/"){
+  	  req_obj = "/index.html";
   }
 	return file_dir + req_obj.substr(1, string::npos);
 }
