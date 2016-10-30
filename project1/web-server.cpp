@@ -140,12 +140,11 @@ bool grab_file_data(vector<uint8_t>& data, string filename){
 		perror("Error opening file!");
 		return false;
 	}
-	ostringstream ss;
-	ss << file.rdbuf();
-	const string& s = ss.str();
-	vector<char> vec(s.begin(), s.end());
-	// Use for testing by outputting the contents of file to stdout
-	// std::copy(vec.begin(), vec.end(), std::ostream_iterator<char>(std::cout));
+	ifstream::pos_type pos = file.tellg();
+	vector<char> vec(pos);
+	file.seekg(0, ios::beg);
+	file.read(&vec[0], pos);
+
 	for(char c : vec){
 		data.push_back((uint8_t)c);
 	}
