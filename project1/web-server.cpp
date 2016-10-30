@@ -178,8 +178,9 @@ void data_transmission(int client_fd, string filedir, char* ipstr, unsigned shor
 			response = new HttpResponse(400, data);
 			good_get = false;
 		}
-		else if (!(good_get |= grab_file_data(data, filename))){
+		else if (!grab_file_data(data, filename)){
 			response = new HttpResponse(404, data);
+			good_get = false;
 		} else {
 			response = new HttpResponse(200, data);
 		}
@@ -190,7 +191,7 @@ void data_transmission(int client_fd, string filedir, char* ipstr, unsigned shor
 		}
 		delete response;
 		close(client_fd);
-		cout << "Close a connection with: " << ipstr << ":" << port << endl;
+		cout << "Closed the connection with: " << ipstr << ":" << port << endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -243,7 +244,7 @@ int main(int argc, char* argv[]) {
 
 		char ipstr[INET_ADDRSTRLEN] = {'\0'};
 		inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
-		cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
+		cout << "Accepted a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
 
 		thread t(data_transmission, clientFd, filedir, ipstr, ntohs(clientAddr.sin_port));
 		t.detach();
