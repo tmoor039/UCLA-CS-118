@@ -49,34 +49,27 @@ vector<string> decode(vector<uint8_t> d_http_req){
 	return parse(result);
 }
 
-void binder(int& sock_fd, struct addrinfo* my_addr, int addr_len){
+bool binder(int& sock_fd, struct addrinfo* my_addr, int addr_len){
 	if(::bind(sock_fd, (struct sockaddr*)& *my_addr, addr_len) == -1){
 		perror("Error in binding socket!");
-		exit(2);
+		return false;
 	}
+	return true;
 }
 
-void listener(int& sock_fd){
+bool listener(int& sock_fd){
 	if(listen(sock_fd,1) == -1){
 		perror("Error initiating listening!");
-		exit(3);
+		return false;
 	}
+	return true;
 }
 
-int acceptor(int& sock_fd, struct sockaddr* cli_addr, socklen_t* addrlen){
-	int cli_fd = accept(sock_fd, cli_addr, addrlen);
-	if(cli_fd == -1){
-		perror("Error in accepting request!");
-		exit(4);
-	}
-	return cli_fd;
-}
-
-short string_to_short(string input){
+unsigned short string_to_short(string input){
 	int i = atoi(input.c_str());
 	if(i > USHRT_MAX){
 		perror("Error, invalid port given!");
-		exit(5);
+		exit(1);
 	}
 	return (unsigned short)i;
 }
@@ -92,9 +85,8 @@ bool bad_request(vector<string>& request) {
 }
 
 // Receive data from file descriptor fd and save data in vector.
-vector<uint8_t> receive_data(int fd) {
+bool receive_data(int fd, vector<uint8_t>& data) {
     char buf[BUF_SIZE];
-    vector<uint8_t> data;
     bool isEnd = false;
 	while(!isEnd) {
         memset(buf, '\0', sizeof(buf));
@@ -102,7 +94,7 @@ vector<uint8_t> receive_data(int fd) {
         int length = recv(fd, buf, BUF_SIZE, 0);
         if (length == -1) {
             perror("recv error\n");
-            exit(1);
+            return false;
         }        
         // finished receiving file
         else if (length == 0) {
@@ -116,7 +108,7 @@ vector<uint8_t> receive_data(int fd) {
             data.push_back(buf[i]);
         }
 	}
-    return data;
+    return true;
 } 
 
 string make_fullpath(string file_dir, string req_obj){
@@ -163,14 +155,15 @@ int send_data(int& sock_fd, HttpResponse* resp){
 	}
 	if(send(sock_fd, buf, data_size, 0) == -1){
 		perror("Error sending data!");
-		exit(7);
+		return -1;
 	}
 	delete[] buf;
 	return 1;
 }
 
 void data_transmission(int client_fd, string filedir, char* ipstr, unsigned short port){
-		vector<uint8_t> requestMessage = receive_data(client_fd);
+		vector<uint8_t> requestMessage;
+		if(!receive_data(client_fd, requestMessage)) { return; }
 		vector<string> header = decode(requestMessage);
 		string filename = make_fullpath(filedir, header[1]);
 		vector<uint8_t> data;
@@ -205,7 +198,7 @@ int main(int argc, char* argv[]) {
 	// require 0 or 3 arguments
 	if (argc != 1 && argc != 4) {
 		fprintf(stderr, "Usage: %s [hostname] [port] [file-dir]\n", argv[0]);
-		exit(1);
+		return -1;
 	}
 
 	if (argc == 4) {
@@ -221,7 +214,7 @@ int main(int argc, char* argv[]) {
 	int reconnect = 1;
 	if(setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reconnect, sizeof(int)) == -1) {
 		perror("Error making socket reusable!");
-		exit(8);
+		return -1;
 	}
 
 	URL host_url("", hostname, (unsigned)stoi(port));
@@ -231,18 +224,19 @@ int main(int argc, char* argv[]) {
 	addr.sin_port = htons(string_to_short(port));
 	if(host_url.resolveDomain() == ""){
 		perror("Error resolving domain name!");
-		exit(6);
+		return -1;
 	}
 	addr.sin_addr.s_addr = inet_addr((host_url.resolveDomain()).c_str());
 	memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
 
-	binder(socket_fd, (struct addrinfo*)& addr, sizeof(addr));
-	listener(socket_fd);
+	if(!binder(socket_fd, (struct addrinfo*)& addr, sizeof(addr))) { return -1; }
+	if(!listener(socket_fd)) { return -1; }
 
 	while(1){
 		struct sockaddr_in clientAddr;
 		socklen_t clientAddrSize = sizeof(clientAddr);
-		int clientFd = acceptor(socket_fd, (struct sockaddr*)&clientAddr, &clientAddrSize);
+		int clientFd = accept(socket_fd, (struct sockaddr*)& clientAddr, &clientAddrSize);
+		if(clientFd == -1) { continue; }
 
 		char ipstr[INET_ADDRSTRLEN] = {'\0'};
 		inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
