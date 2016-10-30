@@ -167,7 +167,7 @@ int send_data(int& sock_fd, HttpResponse* resp){
 	return 1;
 }
 
-void data_transmission(int client_fd, string filedir, char* ipstr, short port){
+void data_transmission(int client_fd, string filedir, char* ipstr, unsigned short port){
 		vector<uint8_t> requestMessage = receive_data(client_fd);
 		vector<string> header = decode(requestMessage);
 		string filename = make_fullpath(filedir, header[1]);
@@ -184,9 +184,9 @@ void data_transmission(int client_fd, string filedir, char* ipstr, short port){
 			response = new HttpResponse(200, data);
 		}
 		if(send_data(client_fd, response) == 1 && good_get){
-			cout << "Sent the file: " << filename << " to " << ipstr << port << endl;
+			cout << "Sent the file: " << filename << " to " << ipstr << ":" << port << endl;
 		} else {
-			cerr << "Error sending file: " << filename << " to " << ipstr << port << endl; 
+			cerr << "Error sending file: " << filename << " to " << ipstr << ":" << port << endl; 
 		}
 		delete response;
 		close(client_fd);
