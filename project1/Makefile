@@ -1,3 +1,4 @@
+.PHONY: all web-server web-client clean
 CXX=g++
 CXXOPTIMIZE= -O2
 CXXFLAGS= -g -Wall -pthread -std=c++11 $(CXXOPTIMIZE)
