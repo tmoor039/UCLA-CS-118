@@ -150,83 +150,92 @@ int getHttpResponse(Connection *connection, URL *url) {
     }
 
     for (int i = 0; i < BUF_SIZE; i++) {
-      if (isData == false) {
-        if (buf[i] == '\r' || buf[i] == '\n' || buf[i] == ' ') {
-          if (word.substr(0, 5) == "HTTP/") {
-            getCode = true;
-          }
-          
-          else if (getCode) {
-            code = word;
-            getCode = false;
-            getMessage = true;
-          } else if (getMessage) {
-            while (buf[i] != '\r' && buf[i] != '\n') {
-              word += buf[i];
-              i++;
+        if (isData == false) {
+            if (buf[i] == '\r' || buf[i] == '\n' || buf[i] == ' ') {
+                if (word.substr(0, 5) == "HTTP/") {
+                    getCode = true;
+                }
+
+                else if (getCode) {
+                    code = word;
+                    getCode = false;
+                    getMessage = true;
+                } else if (getMessage) {
+                    while (buf[i] != '\r' && buf[i] != '\n') {
+                    word += buf[i];
+                    i++;
+                }
+                message = word;
+                std::cout << url->url << ": " << code << " " << message << std::endl;
+                if (code != "200") {
+                    return 1;
+                }
+                outputFile.open(name);
+                getMessage = false;
+                } else if (getLength) {
+                    contentLength = atoi(word.c_str());
+                    getLength = false;
+                } else if (word == "Content-Length:") {
+                    getLength = true;
+                }
+                word = ""; 
             }
-            message = word;
-            std::cout << url->url << ": " << code << " " << message << std::endl;
-            if (code != "200") {
-              return 1;
+
+            // End of buffer contents
+            if (buf[i] == '\0') {
+                break;
+            } 
+
+            // Carriage return
+            else if (buf[i] == '\r') {
+                if (count == 2) {
+                    count = 3;
+                } else {
+                    count = 1;
+                }
             }
-            outputFile.open(name);
-            getMessage = false;
-          } else if (getLength) {
-            contentLength = atoi(word.c_str());
-            getLength = false;
-          } else if (word == "Content-Length:") {
-            getLength = true;
-          }
-          word = ""; 
-        }
-        
-        // End of buffer contents
-        if (buf[i] == '\0') {
-          break;
-        } 
-        
-        // Carriage return
-        else if (buf[i] == '\r') {
-          if (count == 2) {
-            count = 3;
-          } else {
-            count = 1;
-          }
-        }
-        
-        // Newline
-        else if (buf[i] == '\n') {
-          if (count == 1) {
-            count = 2;
-          } else if (count == 3) {
-            isData = true;
-          } else {
+
+            // Newline
+            else if (buf[i] == '\n') {
+                if (count == 1) {
+                    count = 2;
+                } else if (count == 3) {
+                    isData = true;
+                
+                    // when we start at data, break out of 
+                    // inner parsing loop and continue in outer loop.
+                    for (int i = 0; i < length; i++) {
+                        outputFile << buf[i];
+                    }
+                    break;
+                } else {
+                    count = 0;
+                }
+            }
+
+            // Space (don't delete this)
+            else if (buf[i] == ' ') {
+            }
+
+            // Other non-data contents
+            else {
             count = 0;
-          }
+            word += buf[i];
+            }
         }
 
-        // Space (don't delete this)
-        else if (buf[i] == ' ') {
-        }
         
-        // Other non-data contents
-        else {
-          count = 0;
-          word += buf[i];
+    }
+    // Data
+    if (length > 0) {
+        for (int i = 0; i < length; i++) {
+            outputFile << buf[i];
         }
-      }
-      
-      // Data
-      else if (contentLength > 0) {
-        outputFile << buf[i];
-        length--;
-      }
+    }
 
-      else {
+    else { 
         outputFile.close();
         return 0;
-      }
     }
   }
 }
