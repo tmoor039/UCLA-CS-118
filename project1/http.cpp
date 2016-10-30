@@ -42,7 +42,7 @@ HttpMessage::HttpMessage(string version)
 	: m_version(version)
 {
 	if(version == "HTTP/1.1" || version == "HTTP/2.0"){
-		m_connection = "persistent";
+		m_connection = "keep-alive";
 	} else if(version == "HTTP/1.0") {
 		m_connection = "non-persistent";
 	} else {

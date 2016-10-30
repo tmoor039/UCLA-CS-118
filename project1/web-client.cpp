@@ -127,7 +127,7 @@ int getHttpResponse(Connection *connection, URL *url) {
   int count = 0, contentLength = 1000000000;
   bool isData = false, getCode = false, getMessage = false, getLength = false;
   std::string code = "", message = "", word = "";
-  
+
   // Prepare output file
   std::string path = url->object;
   std::string name = path.substr(path.find_last_of("/") + 1);
@@ -155,7 +155,7 @@ int getHttpResponse(Connection *connection, URL *url) {
           if (word.substr(0, 5) == "HTTP/") {
             getCode = true;
           }
-          
+
           else if (getCode) {
             code = word;
             getCode = false;
@@ -180,7 +180,7 @@ int getHttpResponse(Connection *connection, URL *url) {
           }
           word = ""; 
         }
-         
+
         // Carriage return
         if (buf[i] == '\r') {
           if (count == 2) {
@@ -189,7 +189,7 @@ int getHttpResponse(Connection *connection, URL *url) {
             count = 1;
           }
         }
-        
+
         // Newline
         else if (buf[i] == '\n') {
           if (count == 1) {
@@ -207,7 +207,7 @@ int getHttpResponse(Connection *connection, URL *url) {
           word += buf[i];
         }
       }
-      
+
       // Data
       else if (contentLength > 0) {
         outputFile << buf[i];
@@ -227,47 +227,47 @@ void closeConnection(Connection *connection) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc == 1) {
-        fprintf(stderr, "Usage: %s [URL] [URL]...\n", argv[0]);
-        exit(1);
+  if (argc == 1) {
+    fprintf(stderr, "Usage: %s [URL] [URL]...\n", argv[0]);
+    exit(1);
+  }
+
+  for (int i = 1; i < argc; i++) {
+    URL *url = createURL(argv[i]);
+    if (url == NULL) {
+      fprintf(stderr, "Improper URL (%s)\n", argv[1]);
+      delete url;
+      continue;
     }
 
-    for (int i = 1; i < argc; i++) {
-      URL *url = createURL(argv[i]);
-      if (url == NULL) {
-        fprintf(stderr, "Improper URL (%s)\n", argv[1]);
-        delete url;
-        continue;
-      }
-
-      Connection *connection = connectToURLHost(url);
-      if (connection == NULL) {
-        delete url;
-        delete connection;
-        continue;
-      }
-
-      HttpRequest request(*url);
-
-      int status;
-      status = sendHttpRequest(&request, connection);
-      if (status != 0) {
-        delete url;
-        delete connection;
-        continue;
-      }
-
-      status = getHttpResponse(connection, url);
-      if (status != 0) {
-        delete url;
-        delete connection;
-        continue;
-      }
-
-      closeConnection(connection);
+    Connection *connection = connectToURLHost(url);
+    if (connection == NULL) {
       delete url;
       delete connection;
-    } 
+      continue;
+    }
 
-    return EXIT_SUCCESS;
+    HttpRequest request(*url);
+
+    int status;
+    status = sendHttpRequest(&request, connection);
+    if (status != 0) {
+      delete url;
+      delete connection;
+      continue;
+    }
+
+    status = getHttpResponse(connection, url);
+    if (status != 0) {
+      delete url;
+      delete connection;
+      continue;
+    }
+
+    closeConnection(connection);
+    delete url;
+    delete connection;
+  } 
+
+  return EXIT_SUCCESS;
 }
