@@ -183,7 +183,7 @@ void data_transmission(int client_fd, string filedir, char* ipstr){
 		} else {
 			response = new HttpResponse(200, data);
 		}
-		if(good_get && send_data(client_fd, response) == 1){
+		if(send_data(client_fd, response) == 1 && good_get){
 			cout << "Sent the file: " << filename << " to " << ipstr << endl;
 		}
 		delete response;
