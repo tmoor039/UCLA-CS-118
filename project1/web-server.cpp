@@ -135,7 +135,7 @@ bool grab_file_data(vector<uint8_t>& data, string filename){
 		}
 	}
 	
-	ifstream file(filename);
+	ifstream file(filename, ios::binary|ios::ate);
 	if(file.fail()){
 		perror("Error opening file!");
 		return false;
@@ -144,8 +144,9 @@ bool grab_file_data(vector<uint8_t>& data, string filename){
 	vector<char> vec(pos);
 	file.seekg(0, ios::beg);
 	file.read(&vec[0], pos);
-
+	
 	for(char c : vec){
+		cout << c << " ";
 		data.push_back((uint8_t)c);
 	}
 	return true;
