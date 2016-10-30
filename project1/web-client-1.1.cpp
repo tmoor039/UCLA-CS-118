@@ -244,9 +244,10 @@ int main(int argc, char* argv[]) {
       }
 
       Connection *connection;
-      char buf;
       std::string key = url->ip + ":" + std::to_string(url->port);
-      if (connections.find(key) == connections.end() || recv(connections[key]->sfd, &buf, 1, MSG_PEEK) <= 0) {
+      int error = 0;
+      socklen_t size = sizeof(error);
+      if (connections.find(key) == connections.end() || getsockopt(connections[key]->sfd, SOL_SOCKET, SO_ERROR, &error, &size) != 0) {
         connection = connectToURLHost(url);
         if (connection == NULL) {
           delete url;
