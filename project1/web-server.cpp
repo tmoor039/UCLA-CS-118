@@ -147,14 +147,10 @@ bool grab_file_data(vector<uint8_t>& data, string filename){
 	file_size = file.tellg();
 	file.seekg(0, ios::beg);
 
-	vector<uint8_t> vec;
-	vec.reserve(file_size);
+	data.reserve(file_size);
 
-	vec.insert(vec.begin(), istream_iterator<uint8_t>(file), istream_iterator<uint8_t>());
+	data.insert(data.begin(), istream_iterator<uint8_t>(file), istream_iterator<uint8_t>());
 	
-	for(uint8_t c : vec){
-		data.push_back(c);
-	}
 	return true;
 }
 
@@ -165,7 +161,7 @@ int send_data(int& sock_fd, HttpResponse* resp){
 	for(size_t i = 0; i < data_size; i++){
 		buf[i] = enc_data[i];
 	}
-	if(send(sock_fd, buf, enc_data.size(), 0) == -1){
+	if(send(sock_fd, buf, data_size, 0) == -1){
 		perror("Error sending data!");
 		exit(7);
 	}

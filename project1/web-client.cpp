@@ -149,13 +149,7 @@ int getHttpResponse(Connection *connection, URL *url) {
       return 0;
     }
 
-    for (int i = 0; i < BUF_SIZE; i++) {
-
-      // End of buffer contents
-      if (buf[i] == '\0') {
-        break;
-      }
- 
+    for (int i = 0; i < length; i++) {
       if (isData == false) {
         if (buf[i] == '\r' || buf[i] == '\n' || buf[i] == ' ' || buf[i] == '\0') {
           if (word.substr(0, 5) == "HTTP/") {
@@ -176,7 +170,7 @@ int getHttpResponse(Connection *connection, URL *url) {
             if (code != "200") {
               return 1;
             }
-            outputFile.open(name);
+            outputFile.open(name, std::ios::binary);
             getMessage = false;
           } else if (getLength) {
             contentLength = atoi(word.c_str());
@@ -186,14 +180,9 @@ int getHttpResponse(Connection *connection, URL *url) {
           }
           word = ""; 
         }
-        
-        // End of buffer contents
-        if (buf[i] == '\0') {
-          break;
-        }
          
         // Carriage return
-        else if (buf[i] == '\r') {
+        if (buf[i] == '\r') {
           if (count == 2) {
             count = 3;
           } else {
