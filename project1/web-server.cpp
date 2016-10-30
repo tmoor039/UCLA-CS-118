@@ -248,4 +248,5 @@ int main(int argc, char* argv[]) {
 		thread t(data_transmission, clientFd, filedir, ipstr, ntohs(clientAddr.sin_port));
 		t.detach();
 	}
+  return 0;
 }
