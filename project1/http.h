@@ -81,9 +81,9 @@ class HttpResponse: HttpMessage {
 	std::vector<uint8_t> m_data;
 	const std::unordered_map<unsigned int, std::string> m_codes = {
 		{200, "OK"},
-		{400, "BAD REQUEST"},
-		{404, "NOT FOUND"},
-		{505, "HTTP VERSION NOT SUPPORTED"}
+		{400, "Bad Request"},
+		{404, "Not Found"},
+		{505, "HTTP Version Not Supported"}
 	};
 	// Used for data printing
 	void print_data() const{
