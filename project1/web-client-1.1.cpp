@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <sstream>
 #include <fstream>
+#include <unordered_map>
 
 #define BUF_SIZE 1000
 
@@ -231,6 +232,8 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Usage: %s [URL] [URL]...\n", argv[0]);
         exit(1);
     }
+    
+    std::unordered_map<std::string, Connection*> connections;
 
     for (int i = 1; i < argc; i++) {
       URL *url = createURL(argv[i]);
@@ -240,11 +243,18 @@ int main(int argc, char* argv[]) {
         continue;
       }
 
-      Connection *connection = connectToURLHost(url);
-      if (connection == NULL) {
-        delete url;
-        delete connection;
-        continue;
+      Connection *connection;
+      char buf;
+      std::string key = url->ip + ":" + std::to_string(url->port);
+      if (connections.find(key) == connections.end() || recv(connections[key]->sfd, &buf, 1, MSG_PEEK) <= 0) {
+        connection = connectToURLHost(url);
+        if (connection == NULL) {
+          delete url;
+          continue;
+        }
+        connections[key] = connection;
+      } else {
+        connection = connections[key];
       }
 
       HttpRequest request(*url);
@@ -253,20 +263,14 @@ int main(int argc, char* argv[]) {
       status = sendHttpRequest(&request, connection);
       if (status != 0) {
         delete url;
-        delete connection;
         continue;
       }
 
       status = getHttpResponse(connection, url);
       if (status != 0) {
         delete url;
-        delete connection;
         continue;
       }
-
-      closeConnection(connection);
-      delete url;
-      delete connection;
     } 
 
     return EXIT_SUCCESS;
