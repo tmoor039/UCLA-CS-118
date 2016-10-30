@@ -54,9 +54,11 @@ public:
 class HttpRequest: HttpMessage {
 	std::string m_method;
 	URL m_url;
+	unsigned int m_keep_alive;
 public:
 	// Constructors
 	HttpRequest(URL url, std::string method="GET");
+	HttpRequest(URL url, std::string version, std::string method="GET");
 	virtual ~HttpRequest() {};
 
 	// Accessors
@@ -98,6 +100,7 @@ class HttpResponse: HttpMessage {
 public:
 	HttpResponse();
 	HttpResponse(int status, std::vector<uint8_t> data);
+	HttpResponse(int status, std::string version, std::vector<uint8_t> data);
 	virtual ~HttpResponse(){};
 
 	// Accessors

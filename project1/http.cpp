@@ -57,11 +57,23 @@ HttpRequest::HttpRequest(URL url, string method)
 {
 	m_url = url;
 }
+HttpRequest::HttpRequest(URL url, string version, string method)
+	: HttpMessage(version), m_method(method)
+{
+	m_url = url;
+	// Keep Alive time for 1.1 - Default to 115s
+	m_keep_alive = version == "HTTP/1.1" ? 115 : 0;
+}
 
 // Encode the data as bytes
 vector<uint8_t> HttpRequest::encode(){
 	string cr_nl = "\r\n";
-	string final_message = m_method + " " + m_url.object + " " + m_version + cr_nl + "Host: " + m_url.host + cr_nl + cr_nl;
+	string keep_alive_info = "";
+	if(m_version == "HTTP/1.1"){
+		keep_alive_info = "Keep-Alive: " + to_string(m_keep_alive) + cr_nl;
+	}
+	string final_message = m_method + " " + m_url.object + " " + m_version + cr_nl + "Host: " + m_url.host + cr_nl +
+						   keep_alive_info + cr_nl;
 	vector<uint8_t> wire(final_message.begin(), final_message.end());
 
 	return wire;
@@ -85,6 +97,13 @@ HttpResponse::HttpResponse()
 
 HttpResponse::HttpResponse(int status, vector<uint8_t> data)
 	: m_status(status)
+{
+	m_data = data;
+	m_data_size = data.size();
+}
+
+HttpResponse::HttpResponse(int status, string version, vector<uint8_t> data)
+	: HttpMessage(version), m_status(status)
 {
 	m_data = data;
 	m_data_size = data.size();
