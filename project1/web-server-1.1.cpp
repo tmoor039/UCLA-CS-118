@@ -21,11 +21,13 @@ using namespace std;
 #include "http.h"
 
 #define BUF_SIZE 1000
-#define TIMEOUT 30
 
 #define HOST_NAME 1
 #define PORT 2 
 #define FILE_DIR 3
+
+//Global Timeout limit
+unsigned int TIMEOUT = 30;
 
 vector<string> parse(string decoded_message){
   vector<string> tokens;
@@ -40,6 +42,7 @@ vector<string> parse(string decoded_message){
       word = "";
     }
   }
+  for(string w : tokens) { cout << w << endl; }
   return tokens;
 }
 
@@ -179,14 +182,14 @@ void data_transmission(int client_fd, string filedir, char* ipstr, unsigned shor
     bool good_get = true;
     HttpResponse* response;
     if(bad_request(header)){
-      response = new HttpResponse(400, data);
+      response = new HttpResponse(400, "HTTP/1.1", data);
       good_get = false;
     }
     else if (!grab_file_data(data, filename)){
-      response = new HttpResponse(404, data);
+      response = new HttpResponse(404, "HTTP/1.1", data);
       good_get = false;
     } else {
-      response = new HttpResponse(200, data);
+      response = new HttpResponse(200, "HTTP/1.1", data);
     }
     if(send_data(client_fd, response) == 1 && good_get){
       cout << "Sent the file: " << filename << " to " << ipstr << ":" << port << endl;
