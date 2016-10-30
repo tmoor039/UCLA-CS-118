@@ -21,6 +21,7 @@ struct Connection {
   int len;
   int sfd;
   struct sockaddr_in dest;
+  URL *url;
 };
 
 URL *createURL(std::string urlString) {
@@ -92,6 +93,7 @@ URL *createURL(std::string urlString) {
 Connection *connectToURLHost(URL *url) {
   Connection *connection = new Connection;
 
+  connection->url = url;
   connection->sfd = socket(AF_INET, SOCK_STREAM, 0);
 
   connection->dest.sin_family = AF_INET;
@@ -237,17 +239,17 @@ int main(int argc, char* argv[]) {
 
     for (int i = 1; i < argc; i++) {
       URL *url = createURL(argv[i]);
-      if (url == NULL) {
-        fprintf(stderr, "Improper URL (%s)\n", argv[1]);
-        delete url;
-        continue;
-      }
 
       Connection *connection;
       std::string key = url->ip + ":" + std::to_string(url->port);
       int error = 0;
       socklen_t size = sizeof(error);
       if (connections.find(key) == connections.end() || getsockopt(connections[key]->sfd, SOL_SOCKET, SO_ERROR, &error, &size) != 0) {
+        if (url == NULL) {
+          fprintf(stderr, "Improper URL (%s)\n", argv[1]);
+          delete url;
+          continue;
+        }
         connection = connectToURLHost(url);
         if (connection == NULL) {
           delete url;
@@ -255,24 +257,28 @@ int main(int argc, char* argv[]) {
         }
         connections[key] = connection;
       } else {
+        delete url;
         connection = connections[key];
+        url = connection->url;
       }
 
-      HttpRequest request(*url);
+      HttpRequest request(*url, "HTTP/1.1", "GET");
 
       int status;
       status = sendHttpRequest(&request, connection);
       if (status != 0) {
-        delete url;
         continue;
       }
 
-      status = getHttpResponse(connection, url);
-      if (status != 0) {
-        delete url;
-        continue;
-      }
+      getHttpResponse(connection, url);
     } 
 
+    for (auto i : connections) {
+      int error = 0;
+      socklen_t size = sizeof(error);
+      if (getsockopt(i.second->sfd, SOL_SOCKET, SO_ERROR, &error, &size) != 0) {
+        close(i.second->sfd);
+      }
+    }
     return EXIT_SUCCESS;
 }
