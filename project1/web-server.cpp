@@ -8,6 +8,7 @@
 using namespace std;
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
@@ -126,6 +127,14 @@ string make_fullpath(string file_dir, string req_obj){
 }
 
 int grab_file_data(vector<uint8_t>& data, string filename){
+	struct stat info;
+	if(stat(filename.c_str(), &info) == 0){
+		if(info.st_mode & S_IFDIR){
+			perror("Can't send a directory!");
+			return -1;
+		}
+	}
+	
 	ifstream file(filename);
 	if(file.fail()){
 		perror("Error opening file!");
