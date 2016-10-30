@@ -135,19 +135,25 @@ bool grab_file_data(vector<uint8_t>& data, string filename){
 		}
 	}
 	
-	ifstream file(filename, ios::binary|ios::ate);
+	ifstream file(filename, ios::binary);
 	if(file.fail()){
 		perror("Error opening file!");
 		return false;
 	}
-	ifstream::pos_type pos = file.tellg();
-	vector<char> vec(pos);
+	file.unsetf(ios::skipws);
+
+	streampos file_size;
+	file.seekg(0, ios::end);
+	file_size = file.tellg();
 	file.seekg(0, ios::beg);
-	file.read(&vec[0], pos);
+
+	vector<uint8_t> vec;
+	vec.reserve(file_size);
+
+	vec.insert(vec.begin(), istream_iterator<uint8_t>(file), istream_iterator<uint8_t>());
 	
-	for(char c : vec){
-		cout << c << " ";
-		data.push_back((uint8_t)c);
+	for(uint8_t c : vec){
+		data.push_back(c);
 	}
 	return true;
 }
