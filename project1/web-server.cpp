@@ -126,19 +126,19 @@ string make_fullpath(string file_dir, string req_obj){
 	return file_dir + req_obj.substr(1, string::npos);
 }
 
-int grab_file_data(vector<uint8_t>& data, string filename){
+bool grab_file_data(vector<uint8_t>& data, string filename){
 	struct stat info;
 	if(stat(filename.c_str(), &info) == 0){
 		if(info.st_mode & S_IFDIR){
 			perror("Can't send a directory!");
-			return -1;
+			return false;
 		}
 	}
 	
 	ifstream file(filename);
 	if(file.fail()){
 		perror("Error opening file!");
-		return -1;
+		return false;
 	}
 	ostringstream ss;
 	ss << file.rdbuf();
@@ -149,7 +149,7 @@ int grab_file_data(vector<uint8_t>& data, string filename){
 	for(char c : vec){
 		data.push_back((uint8_t)c);
 	}
-	return 1;
+	return true;
 }
 
 int send_data(int& sock_fd, HttpResponse* resp){
@@ -172,16 +172,18 @@ void data_transmission(int client_fd, string filedir, char* ipstr){
 		vector<string> header = decode(requestMessage);
 		string filename = make_fullpath(filedir, header[1]);
 		vector<uint8_t> data;
+		bool good_get = true;
 		HttpResponse* response;
-		if(grab_file_data(data, filename) == -1){
+		if(bad_request(header)){
+			response = new HttpResponse(400, data);
+			good_get = false;
+		}
+		else if (!(good_get |= grab_file_data(data, filename))){
 			response = new HttpResponse(404, data);
 		} else {
 			response = new HttpResponse(200, data);
 		}
-		if (bad_request(header)) {
-			response->set_status(400);
-		}
-		if(send_data(client_fd, response) == 1){
+		if(good_get || send_data(client_fd, response) == 1){
 			cout << "Sent the file: " << filename << " to " << ipstr << endl;
 		}
 		delete response;
