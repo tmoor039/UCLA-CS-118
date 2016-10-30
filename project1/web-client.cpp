@@ -30,7 +30,7 @@ URL *createURL(std::string urlString) {
 
   // Find the starting point after '://'
   bool foundFirst = false;
-  int i = 0;
+  size_t i = 0;
   for (; i < urlString.length(); i++) {
     if (urlString[i] == '/') {
       if (foundFirst == true) {
@@ -110,7 +110,7 @@ int sendHttpRequest(HttpRequest *request, Connection *connection) {
   std::vector<uint8_t> data = request->encode();
   uint8_t buf[data.size()];
 
-  for (int i = 0; i < data.size(); i++) {
+  for (size_t i = 0; i < data.size(); i++) {
     buf[i] = data[i];
   }
 

@@ -28,7 +28,7 @@ vector<string> parse(string decoded_message){
 	vector<string> tokens;
 	size_t msg_size = decoded_message.size();
 	string word = "";
-	for(int i = 0; i < msg_size; i++){
+	for(size_t i = 0; i < msg_size; i++){
 		if(decoded_message[i] != ' ' && decoded_message[i] != '\r'
 		   && decoded_message[i] != '\n'){
 		   	word += decoded_message[i];
@@ -147,7 +147,7 @@ int send_data(int& sock_fd, HttpResponse* resp){
 	vector<uint8_t> enc_data = resp->encode();
 	size_t data_size = enc_data.size();
 	uint8_t* buf = new uint8_t[data_size];
-	for(int i = 0; i < data_size; i++){
+	for(size_t i = 0; i < data_size; i++){
 		buf[i] = enc_data[i];
 	}
 	if(send(sock_fd, buf, enc_data.size(), 0) == -1){
