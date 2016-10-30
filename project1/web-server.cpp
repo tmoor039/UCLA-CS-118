@@ -167,7 +167,7 @@ int send_data(int& sock_fd, HttpResponse* resp){
 	return 1;
 }
 
-void data_transmission(int client_fd, string filedir, char* ipstr){
+void data_transmission(int client_fd, string filedir, char* ipstr, short port){
 		vector<uint8_t> requestMessage = receive_data(client_fd);
 		vector<string> header = decode(requestMessage);
 		string filename = make_fullpath(filedir, header[1]);
@@ -184,10 +184,13 @@ void data_transmission(int client_fd, string filedir, char* ipstr){
 			response = new HttpResponse(200, data);
 		}
 		if(send_data(client_fd, response) == 1 && good_get){
-			cout << "Sent the file: " << filename << " to " << ipstr << endl;
+			cout << "Sent the file: " << filename << " to " << ipstr << port << endl;
+		} else {
+			cerr << "Error sending file: " << filename << " to " << ipstr << port << endl; 
 		}
 		delete response;
 		close(client_fd);
+		cout << "Close a connection with: " << ipstr << ":" << port << endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -242,7 +245,7 @@ int main(int argc, char* argv[]) {
 		inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
 		cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << endl;
 
-		thread t(data_transmission, clientFd, filedir, ipstr);
+		thread t(data_transmission, clientFd, filedir, ipstr, ntohs(clientAddr.sin_port));
 		t.detach();
 	}
 }
