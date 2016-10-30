@@ -124,7 +124,7 @@ int sendHttpRequest(HttpRequest *request, Connection *connection) {
 
 int getHttpResponse(Connection *connection, URL *url) {
   uint8_t buf[BUF_SIZE] = {0};
-  int count = 0, contentLength = BUF_SIZE;
+  int count = 0, contentLength = 1000000000;
   bool isData = false, getCode = false, getMessage = false, getLength = false;
   std::string code = "", message = "", word = "";
   
@@ -150,8 +150,14 @@ int getHttpResponse(Connection *connection, URL *url) {
     }
 
     for (int i = 0; i < BUF_SIZE; i++) {
+
+      // End of buffer contents
+      if (buf[i] == '\0') {
+        break;
+      }
+ 
       if (isData == false) {
-        if (buf[i] == '\r' || buf[i] == '\n' || buf[i] == ' ') {
+        if (buf[i] == '\r' || buf[i] == '\n' || buf[i] == ' ' || buf[i] == '\0') {
           if (word.substr(0, 5) == "HTTP/") {
             getCode = true;
           }
@@ -184,8 +190,8 @@ int getHttpResponse(Connection *connection, URL *url) {
         // End of buffer contents
         if (buf[i] == '\0') {
           break;
-        } 
-        
+        }
+         
         // Carriage return
         else if (buf[i] == '\r') {
           if (count == 2) {
@@ -206,12 +212,8 @@ int getHttpResponse(Connection *connection, URL *url) {
           }
         }
 
-        // Space (don't delete this)
-        else if (buf[i] == ' ') {
-        }
-        
         // Other non-data contents
-        else {
+        else if (buf[i] != ' ') {
           count = 0;
           word += buf[i];
         }
@@ -220,7 +222,7 @@ int getHttpResponse(Connection *connection, URL *url) {
       // Data
       else if (contentLength > 0) {
         outputFile << buf[i];
-        length--;
+        contentLength--;
       }
 
       else {
