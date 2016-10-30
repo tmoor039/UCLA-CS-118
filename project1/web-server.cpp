@@ -119,7 +119,7 @@ vector<uint8_t> receive_data(int fd) {
 } 
 
 string make_fullpath(string file_dir, string req_obj){
-  if (!file_dir.empty() and file_dir[file_dir.length() - 1] == '.') {
+  if (!file_dir.empty() and file_dir[file_dir.length() - 1] != '/') {
     file_dir += '/';
   }
 	return file_dir + req_obj.substr(1, string::npos);
