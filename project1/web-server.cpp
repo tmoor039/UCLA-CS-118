@@ -75,7 +75,7 @@ unsigned short string_to_short(string input){
 }
 
 bool bad_request(vector<string>& request) {
-    if (request[0].compare("GET") != 0 && request[0].compare("POST") != 0) {
+    if (request[0].compare("GET") != 0) {
         return true;
     }   
     else if (request[2].compare("HTTP/1.0") != 0 && request[2].compare("HTTP/1.1") != 0) {
