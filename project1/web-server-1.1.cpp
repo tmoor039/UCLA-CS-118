@@ -93,7 +93,8 @@ bool receive_data(int fd, vector<uint8_t>& data) {
 
 		int length = recv(fd, buf, BUF_SIZE, 0x20000);
 		if (length == -1) {
-			return false;
+			usleep(10000);
+      continue;
 		}        
 		// finished receiving file
 		else if (length == 0) {
