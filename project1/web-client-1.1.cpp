@@ -13,8 +13,11 @@
 #include <sstream>
 #include <fstream>
 #include <unordered_map>
+#include <fcntl.h>
+#include <sys/time.h>
 
 #define BUF_SIZE 1000
+#define TIMEOUT 10
 
 struct Connection {
   char buffer[BUF_SIZE + 1];
@@ -136,15 +139,24 @@ int getHttpResponse(Connection *connection, URL *url) {
     name = "index.html";
   }
   std::ofstream outputFile;
+  fcntl(connection->sfd, F_SETFL, O_NONBLOCK);
 
+  struct timeval start, current;
+  gettimeofday(&start, NULL);
   while (true) {
+    gettimeofday(&current, NULL);
+    if (current.tv_sec * 1000000 + current.tv_usec > start.tv_sec * 1000000 + start.tv_usec + TIMEOUT * 1000000) {
+      perror("Connection timed out");
+      return 1;
+    }
     memset(buf, '\0', sizeof(buf));
 
     // Read from socket
     int length = recv(connection->sfd, buf, BUF_SIZE, 0);
     if (length == -1) {
-      perror("recv");
-      return 1;
+      usleep(100000);
+      perror("TIMEOUT");
+      continue;
     } else if (length == 0) {
       outputFile.close();
       return 0;
@@ -167,8 +179,8 @@ int getHttpResponse(Connection *connection, URL *url) {
               i++;
             }
             message = word;
-            std::cout << url->url << ": " << code << " " << message << std::endl;
             if (code != "200") {
+              std::cout << url->url << ": " << code << " " << message << std::endl;
               return 1;
             }
             outputFile.open(name, std::ios::binary);
@@ -216,6 +228,7 @@ int getHttpResponse(Connection *connection, URL *url) {
       }
 
       else {
+        std::cout << url->url << ": " << code << " " << message << std::endl;
         outputFile.close();
         return 0;
       }
