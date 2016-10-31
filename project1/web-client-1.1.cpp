@@ -278,7 +278,6 @@ int main(int argc, char* argv[]) {
 
       HttpRequest request(*url, "HTTP/1.1", "GET");
 
-      perror("SENT");
       sendHttpRequest(&request, connection);
 
       getHttpResponse(connection, url);

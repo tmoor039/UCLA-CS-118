@@ -62,7 +62,11 @@ HttpRequest::HttpRequest(URL url, string version, string method)
 {
 	m_url = url;
 	// Keep Alive time for 1.1 - Default to 115s
-	m_keep_alive = version == "HTTP/1.1" ? 115 : 0;
+  if(version == "HTTP/1.1"){
+    m_keep_alive = 115;
+  } else {
+    m_keep_alive = 0;
+  }
 }
 
 // Encode the data as bytes
