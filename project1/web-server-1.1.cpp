@@ -166,7 +166,7 @@ int send_data(int& sock_fd, HttpResponse* resp){
 
 int main(int argc, char* argv[]) {
 
-	string hostname, port, filedir;
+	string hostname, my_port, filedir;
 
 	// require 0 or 3 arguments
 	if (argc != 1 && argc != 4) {
@@ -176,11 +176,11 @@ int main(int argc, char* argv[]) {
 
 	if (argc == 4) {
 		hostname = argv[HOST_NAME];
-		port = argv[PORT];
+		my_port = argv[PORT];
 		filedir = argv[FILE_DIR];
 	} else {  // default arguments
 		hostname = "localhost";
-		port = "4000";
+		my_port = "4000";
 		filedir = ".";
 	}
 
@@ -204,11 +204,11 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 
-	URL host_url("", hostname, (unsigned)stoi(port));
+	URL host_url("", hostname, (unsigned)stoi(my_port));
 
 	struct sockaddr_in addr;
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(string_to_short(port));
+	addr.sin_port = htons(string_to_short(my_port));
 	if(host_url.resolveDomain() == ""){
 		perror("Error resolving domain name!");
 		return -1;
@@ -220,6 +220,10 @@ int main(int argc, char* argv[]) {
 	if(!listener(socket_fd)) { return -1; }
 
 	struct timeval tiv;
+	// Store the client's IP
+	char ipstr[INET_ADDRSTRLEN] = {'\0'};
+	// Store the client's port
+	unsigned short port = 0;
 	while(1){
 		// Set up watcher
 		int n_ready_fds = 0;
@@ -232,10 +236,6 @@ int main(int argc, char* argv[]) {
 			perror("Error in select");
 			return -1;
 		}
-		// Store the client's IP
-		char ipstr[INET_ADDRSTRLEN] = {'\0'};
-		// Store the client's port
-		unsigned short port = 0;
 		if(n_ready_fds == 0){
 			cout << "No data received for " + to_string(tiv.tv_sec) + " seconds!" << endl;
 		} else {
@@ -251,7 +251,7 @@ int main(int argc, char* argv[]) {
 						port = ntohs(clientAddr.sin_port);
 						inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
 						cout << "Accepted a connection from: " << ipstr << ":" << port << endl;
-						
+
 						// Update max socket fd
 						if(max_sock_fd < clientFd) { max_sock_fd = clientFd; }
 
@@ -314,9 +314,9 @@ int main(int argc, char* argv[]) {
 							delete response;
 							gettimeofday(&current, NULL);
 						} while(current.tv_sec + (1.0/1000000) * current.tv_usec < start.tv_sec + (1.0/1000000) * start.tv_usec + TIMEOUT);
+						cout << "Closed the connection with: " << ipstr << ":" << port << endl;
 						close(curr_cli_fd);
 						FD_CLR(curr_cli_fd, &watchFds);
-						cout << "Closed the connection with: " << ipstr << ":" << port << endl;
 					}
 				}
 			}
