@@ -25,6 +25,7 @@ using namespace std;
 #define HOST_NAME 1
 #define PORT 2 
 #define FILE_DIR 3
+#define MSG_NOSIGNAL 0x20000
 
 //Global Timeout limit
 unsigned int TIMEOUT = 30;
@@ -96,7 +97,7 @@ bool receive_data(int fd, vector<uint8_t>& data) {
   while(!isEnd) {
     memset(buf, '\0', sizeof(buf));
 
-    int length = recv(fd, buf, BUF_SIZE, 0);
+    int length = recv(fd, buf, BUF_SIZE, MSG_NOSIGNAL);
     if (length == -1) {
       perror("recv error\n");
       return false;
@@ -175,7 +176,7 @@ void data_transmission(int client_fd, string filedir, char* ipstr, unsigned shor
   current = start;
   while(current.tv_sec + (1.0/1000000) * current.tv_usec < start.tv_sec + (1.0/1000000) * start.tv_usec + TIMEOUT){
     vector<uint8_t> requestMessage;
-    if(!receive_data(client_fd, requestMessage)) { return; }
+    if(!receive_data(client_fd, requestMessage)) { break; }
     vector<string> header = decode(requestMessage);
     string filename = make_fullpath(filedir, header[1]);
     vector<uint8_t> data;
