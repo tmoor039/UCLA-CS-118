@@ -139,6 +139,7 @@ int getHttpResponse(Connection *connection, URL *url) {
     name = "index.html";
   }
   std::ofstream outputFile;
+
   fcntl(connection->sfd, F_SETFL, O_NONBLOCK);
 
   struct timeval start, current;
@@ -155,7 +156,6 @@ int getHttpResponse(Connection *connection, URL *url) {
     int length = recv(connection->sfd, buf, BUF_SIZE, 0);
     if (length == -1) {
       usleep(100000);
-      perror("TIMEOUT");
       continue;
     } else if (length == 0) {
       outputFile.close();
@@ -225,6 +225,11 @@ int getHttpResponse(Connection *connection, URL *url) {
       else if (contentLength > 0) {
         outputFile << buf[i];
         contentLength--;
+        if (contentLength == 0) {
+          std::cout << url->url << ": " << code << " " << message << std::endl;
+          outputFile.close();
+          return 0;
+        }
       }
 
       else {
@@ -273,12 +278,10 @@ int main(int argc, char* argv[]) {
 
       HttpRequest request(*url, "HTTP/1.1", "GET");
 
+      perror("SENT");
       sendHttpRequest(&request, connection);
-      requested.push_back(std::make_pair(connection, url));
-    }
 
-    for (size_t i = 0; i < requested.size(); i++) {
-      getHttpResponse(requested[i].first, requested[i].second);
+      getHttpResponse(connection, url);
     }
 
     for (auto i : connections) {
