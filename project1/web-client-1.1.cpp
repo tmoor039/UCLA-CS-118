@@ -265,7 +265,7 @@ int main(int argc, char* argv[]) {
       requested.push_back(std::make_pair(connection, url));
     }
 
-    for (int i = 0; i < requested.size(); i++) {
+    for (size_t i = 0; i < requested.size(); i++) {
       getHttpResponse(requested[i].first, requested[i].second);
     }
 
