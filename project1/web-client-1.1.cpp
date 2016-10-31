@@ -236,6 +236,7 @@ int main(int argc, char* argv[]) {
     }
     
     std::unordered_map<std::string, Connection*> connections;
+    std::vector<Connection*> requested;
 
     for (int i = 1; i < argc; i++) {
       URL *url = createURL(argv[i]);
@@ -264,19 +265,18 @@ int main(int argc, char* argv[]) {
 
       HttpRequest request(*url, "HTTP/1.1", "GET");
 
-      int status;
-      status = sendHttpRequest(&request, connection);
-      if (status != 0) {
-        continue;
-      }
+      sendHttpRequest(&request, connection);
+      requested.push_back(connection);
+    }
 
-      getHttpResponse(connection, url);
-    } 
+    for (int i = 0; i < requested.size(); i++) {
+      getHttpResponse(requested[i], requested[i]->url);
+    }
 
     for (auto i : connections) {
       int error = 0;
       socklen_t size = sizeof(error);
-      if (getsockopt(i.second->sfd, SOL_SOCKET, SO_ERROR, &error, &size) != 0) {
+      if (getsockopt(i.second->sfd, SOL_SOCKET, SO_ERROR, &error, &size) == 0) {
         close(i.second->sfd);
       }
     }
