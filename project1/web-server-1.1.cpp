@@ -20,7 +20,6 @@ using namespace std;
 #define HOST_NAME 1
 #define PORT 2 
 #define FILE_DIR 3
-#define MSG_NOSIGNAL 0x20000
 
 //Global Timeout limit
 unsigned short TIMEOUT = 0;
@@ -92,7 +91,7 @@ bool receive_data(int fd, vector<uint8_t>& data) {
 	while(!isEnd) {
 		memset(buf, '\0', sizeof(buf));
 
-		int length = recv(fd, buf, BUF_SIZE, MSG_NOSIGNAL);
+		int length = recv(fd, buf, BUF_SIZE, 0x20000);
 		if (length == -1) {
 			return false;
 		}        
