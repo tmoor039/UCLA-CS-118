@@ -240,7 +240,6 @@ int main(int argc, char* argv[]) {
       URL *url = createURL(argv[i]);
       if (url == NULL) {
         fprintf(stderr, "Improper URL (%s)\n", argv[1]);
-        delete url;
         continue;
       }
 
