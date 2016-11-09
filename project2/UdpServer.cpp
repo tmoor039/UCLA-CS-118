@@ -32,10 +32,10 @@ UdpServer::UdpServer(char* port)
                 rp->ai_protocol);                                                          
         if (sfd == -1)                                                             
             continue;                                                              
-        ret = bind(sfd_, rp->ai_addr, rp->ai_addrlen);                             
+        ret = bind(sfd, rp->ai_addr, rp->ai_addrlen);                             
         if (ret != -1) {                                                           
-            break;  // success
             sfd_ = sfd;                                                            
+            break;  // success
         }                                                                          
         close(sfd);                                                             
     }                                                                           
@@ -44,7 +44,7 @@ UdpServer::UdpServer(char* port)
     }                                                                           
     freeaddrinfo(result);                                                       
 
-    ret = listen(sfd, SOMAXCONN);                                               
+    ret = listen(sfd, 1);                                               
     if (ret == -1) {                                                            
         fprintf(stderr, "Failed to listen on socket\n");                        
     }                                                                           
