@@ -1,10 +1,15 @@
 #include "UdpServer.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 int UdpServer::get_cfd() {
     return cfd_;
 }
 
-UdpServer::UdpServer(int port)                                                     
+UdpServer::UdpServer(char* port)                                                     
     : port_(port), sfd_(-1), cfd_(-1)                                              
 {                                                                                  
     struct addrinfo hints;                                                         
@@ -18,7 +23,7 @@ UdpServer::UdpServer(int port)
 
     int ret = getaddrinfo(NULL, port, &hints, &result);                            
     if (ret != 0) {                                                                
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));                     
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));                     
     }                                                                              
 
     int sfd;                                                                       
@@ -29,7 +34,7 @@ UdpServer::UdpServer(int port)
             continue;                                                              
         ret = bind(sfd_, rp->ai_addr, rp->ai_addrlen);                             
         if (ret != -1) {                                                           
-            break;                  /* Success */                                  
+            break;  // success
             sfd_ = sfd;                                                            
         }                                                                          
         close(sfd);                                                             
@@ -45,12 +50,12 @@ UdpServer::UdpServer(int port)
     }                                                                           
 }                                                                               
 
-void UdpServer::accept() {                                                      
-    int cfd = accept(sfd_, NULL, NULL);                                         
-    if (cfd == -1) {                                                            
+void UdpServer::accept_connection() {
+    int cfd = accept(sfd_, NULL, NULL);
+    if (cfd == -1) {
         fprintf(stderr, "accept error\n");                                      
-    }                                                                           
-    else {                                                                      
-        cfd_ = cfd;                                                             
-    }                                                                           
+    }
+    else {
+        cfd_ = cfd;
+    } 
 }                           

@@ -8,17 +8,17 @@
 
 class UdpServer {
 public:
-    UdpServer(int port);
-	void send_file(string& file);
-	int accept();
+    UdpServer(char* port);
+	//void send_file(std::string& file);
+	void accept_connection();
 
 	// accessors:
 	int get_cfd();
 
 private:
     std::string addr_;
-    int port_;    
+    char* port_;    
     int sfd_;
 	int cfd_;
 };
-endif // UDP_SERVER_H
+#endif // UDP_SERVER_H
