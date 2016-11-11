@@ -11,6 +11,7 @@ public:
     UdpServer(char* port);
 	//void send_file(std::string& file);
 	void accept_connection();
+    ssize_t receive_packet();
 
 	// accessors:
 	int get_cfd();

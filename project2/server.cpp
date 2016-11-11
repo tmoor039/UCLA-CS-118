@@ -7,7 +7,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Usage: %s <port-number> <file-name>\n", argv[0]);
     }
     UdpServer udpServer(argv[1]);
-    udpServer.accept_connection();
+    udpServer.receive_packet();
 
     return 0;
 }

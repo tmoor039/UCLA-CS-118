@@ -4,6 +4,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include "globals.h"
 
 int UdpServer::get_cfd() {
     return cfd_;
@@ -43,12 +44,20 @@ UdpServer::UdpServer(char* port)
         fprintf(stderr, "Could not bind socket address\n");                     
     }                                                                           
     freeaddrinfo(result);                                                       
-
-    ret = listen(sfd, 1);                                               
-    if (ret == -1) {                                                            
-        fprintf(stderr, "Failed to listen on socket\n");                        
-    }                                                                           
 }                                                                               
+
+ssize_t UdpServer::receive_packet() {
+    ssize_t nread;
+    sockaddr_storage peer_addr;
+    socklen_t peer_addr_len = sizeof(sockaddr_storage);
+    char buf[PACKET_SIZE];    
+    nread = recvfrom(sfd_, buf, PACKET_SIZE, 0,
+        (sockaddr *) &peer_addr, &peer_addr_len);
+    if (nread == -1)
+        fprintf(stderr, "recvfrom error\n");
+    std::cout << std::string(buf) << std::endl;
+    return nread;
+}
 
 void UdpServer::accept_connection() {
     int cfd = accept(sfd_, NULL, NULL);
