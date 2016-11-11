@@ -5,13 +5,14 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "globals.h"
+#include <stdlib.h>
 
-int UdpServer::get_cfd() {
-    return cfd_;
-}
+Udp::Udp(int port) 
+    : port_(port), sfd_(-1)
+{}
 
-UdpServer::UdpServer(char* port)                                                     
-    : port_(port), sfd_(-1), cfd_(-1)                                              
+UdpServer::UdpServer(int port)                                                     
+    : Udp(port)
 {                                                                                  
     struct addrinfo hints;                                                         
     struct addrinfo *result, *rp;                                                  
@@ -22,7 +23,7 @@ UdpServer::UdpServer(char* port)
     hints.ai_flags = AI_PASSIVE;                                                   
     // Find an address suitable for accepting connections                      
 
-    int ret = getaddrinfo(NULL, port, &hints, &result);                            
+    int ret = getaddrinfo(NULL, std::to_string(port).c_str(), &hints, &result);                            
     if (ret != 0) {                                                                
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));                     
     }                                                                              
@@ -46,7 +47,7 @@ UdpServer::UdpServer(char* port)
     freeaddrinfo(result);                                                       
 }                                                                               
 
-ssize_t UdpServer::receive_packet() {
+ssize_t Udp::receive_packet() {
     ssize_t nread;
     sockaddr_storage peer_addr;
     socklen_t peer_addr_len = sizeof(sockaddr_storage);
@@ -58,13 +59,4 @@ ssize_t UdpServer::receive_packet() {
     std::cout << std::string(buf) << std::endl;
     return nread;
 }
-
-void UdpServer::accept_connection() {
-    int cfd = accept(sfd_, NULL, NULL);
-    if (cfd == -1) {
-        fprintf(stderr, "accept error\n");                                      
-    }
-    else {
-        cfd_ = cfd;
-    } 
-}                           
+                           

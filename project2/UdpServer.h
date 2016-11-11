@@ -6,20 +6,27 @@
 #include <netdb.h>
 #include <iostream>
 
-class UdpServer {
+class Udp {
 public:
-    UdpServer(char* port);
-	//void send_file(std::string& file);
-	void accept_connection();
+    Udp() {}
+    Udp(int port);
+    virtual ~Udp() {}
     ssize_t receive_packet();
 
-	// accessors:
-	int get_cfd();
+    // accessors:
+    int get_port();
 
-private:
+protected:
+    int port_;
     std::string addr_;
-    char* port_;    
     int sfd_;
-	int cfd_;
+};
+
+
+class UdpServer : public Udp {
+public:
+    UdpServer(int port);
+	
+	
 };
 #endif // UDP_SERVER_H
