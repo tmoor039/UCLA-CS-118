@@ -1,8 +1,18 @@
-all: server
+all: server client
 
 clean:
-	rm server
+	if [ -a server ] ; \
+	then \
+		rm server ; \
+	fi;
+	if [ -a client ] ; \
+	then \
+		rm client ; \
+	fi;
+
 
 server:
-	g++ -std=c++11 -Wall -O2 server.cpp UdpServer.cpp -o server
+	g++ -std=c++11 -Wall -O2 server.cpp Udp.cpp -o server
 
+client:
+	g++ -std=c++11 -Wall -O2 client.cpp Udp.cpp -o client
