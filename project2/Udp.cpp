@@ -12,8 +12,8 @@ Udp::Udp(int port)
 {}
 
 void Udp::set_send_buf(std::string data) {
-    memset(sendBuf_, '\0', sizeof(sendBuf_));
-    std::strcpy(sendBuf_, data.c_str());
+    memset(sendPacket_, '\0', sizeof(sendPacket_));
+    std::strcpy(sendPacket_, data.c_str());
 }
 
 UdpServer::UdpServer(int port)                                                     
@@ -56,32 +56,42 @@ UdpServer::UdpServer(int port)
 
 ssize_t Udp::receive_packet(sockaddr* srcAddr, socklen_t* addrLen) {
     ssize_t nread;
-    nread = recvfrom(sfd_, recvBuf_, PACKET_SIZE, 0,
+    nread = recvfrom(sfd_, recvPacket_, PACKET_SIZE, 0,
         srcAddr, addrLen);
     if (nread == -1)
         fprintf(stderr, "recvfrom error\n");
-    std::cout << std::string(recvBuf_) << std::endl;
+    std::cout << std::string(recvPacket_) << std::endl;
     return nread;
 }
 
 ssize_t Udp::send_packet(sockaddr* destAddr, socklen_t addrLen) {
     ssize_t nsent;
-    nsent = sendto(sfd_, sendBuf_, PACKET_SIZE, 0, destAddr, addrLen);
+    nsent = sendto(sfd_, sendPacket_, PACKET_SIZE, 0, destAddr, addrLen);
     if (nsent == -1) {
         fprintf(stderr, "sendto error\n");
     }
     return nsent;
 }
 
+ssize_t UdpClient::receive_packet() {
+    ssize_t nread;
+    nread = recvfrom(sfd_, recvPacket_, PACKET_SIZE, 0, destAddr_, &destAddrLen_);
+    if (nread == -1) {
+        fprintf(stderr, "recvfrom error\n");
+    }
+    std::cout << std::string(recvPacket_) << std::endl;
+    return nread;
+}
+
 ssize_t UdpClient::send_packet() {
     /*ssize_t nsent;
-    nsent = sendto(sfd_, sendBuf_, PACKET_SIZE, 0, destAddr_, destAddrLen_);
+    nsent = sendto(sfd_, sendPacket_, PACKET_SIZE, 0, destAddr_, destAddrLen_);
     if (nsent == -1) {
         fprintf(stderr, "sendto error\n");
     }*/
     
-    int len = strlen(sendBuf_);
-    if (write(sfd_, sendBuf_, len) != len) {
+    int len = strlen(sendPacket_);
+    if (write(sfd_, sendPacket_, len) != len) {
         fprintf(stderr, "Incomplete write\n");
     }
     return 0;

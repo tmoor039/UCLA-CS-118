@@ -15,7 +15,8 @@ public:
     void set_send_buf(std::string data);
 
     virtual ~Udp() {}
-    ssize_t receive_packet(sockaddr* srcAddr, socklen_t* addrLen);
+    virtual ssize_t receive_packet(sockaddr* srcAddr, socklen_t* addrLen);
+    virtual ssize_t receive_packet() { return NULL; }
     // receive packet from socket and returns number of bytes received.
     // srcAddr and addrLen get filled with addr info from source.
 
@@ -29,8 +30,8 @@ protected:
     std::string addr_;
     std::string otherAddr_;
     int sfd_;
-    char recvBuf_[PACKET_SIZE];
-    char sendBuf_[PACKET_SIZE];
+    char recvPacket_[PACKET_SIZE];
+    char sendPacket_[PACKET_SIZE];
 };
 
 class UdpServer : public Udp {
@@ -42,6 +43,7 @@ class UdpClient : public Udp {
 public:
     UdpClient(std::string serverHost, int port);
     virtual ssize_t send_packet();
+    virtual ssize_t receive_packet();
 private:
     std::string serverHost_;
     sockaddr* destAddr_;

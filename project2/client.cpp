@@ -14,4 +14,5 @@ int main(int argc, char* argv[]) {
     UdpClient udpClient(serverHost, port);
     udpClient.set_send_buf("Message from client\n");
     udpClient.send_packet();
+    udpClient.receive_packet();
 }
