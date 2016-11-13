@@ -7,6 +7,20 @@
 #include <iostream>
 #include "globals.h"
 
+class UdpPacket {
+public:
+    UdpPacket() {}
+    UdpPacket(uint16_t srcPort, uint16_t destPort);
+    bool insert_data(uint8_t data[]);
+
+private:
+    void set_checksum();
+    // todo
+    
+    uint8_t header_[8];
+    uint8_t data_[1024];
+}
+
 class Udp {
 public:
     Udp() {}

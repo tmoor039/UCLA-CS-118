@@ -7,6 +7,27 @@
 #include "globals.h"
 #include <stdlib.h>
 
+UdpPacket::UdpPacket(uint16_t srcPort, uint16_t destPort) {
+    memset((uint8_t *) &header_[0], srcPort, sizeof(srcPort));
+    memset((uint8_t *) &header_[2], destPort, sizeof(destPort));
+    set_checksum();
+    memset((uint8_t *) data_, '\0', sizeof(data));
+}
+
+void UdpPacket::set_checksum() {
+    // NOT LEGIT
+    memset((uint8_t *) &header_[6], '\0', 2);
+}
+
+bool UdpPacket::insert_data(uint8_t data[], int len) {
+    if (len > 1024) {
+        fprintf(stderr, "Cannot insert %d bytes to packet\n");
+        return false;
+    }
+    memcpy((uint8_t *) &data_, data, len);
+    return true;
+}
+
 Udp::Udp(int port) 
     : port_(port), sfd_(-1)
 {}
