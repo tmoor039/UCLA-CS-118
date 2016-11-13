@@ -21,20 +21,40 @@ void UdpPacket::set_checksum() {
 
 bool UdpPacket::insert_data(uint8_t data[], int len) {
     if (len > 1024) {
-        fprintf(stderr, "Cannot insert %d bytes to packet\n");
+        fprintf(stderr, "cannot insert %d bytes to packet\n");
         return false;
     }
     memcpy((uint8_t *) &data_, data, len);
     return true;
 }
 
-Udp::Udp(int port) 
+void UdpPacket::set_length(uint16_t length) {
+    memset((uint8_t *) &header_[4], length, sizeof(length));
+}
+
+Udp::Udp(uint16_t port) 
     : port_(port), sfd_(-1)
 {}
 
 void Udp::set_send_buf(std::string data) {
-    memset(sendPacket_, '\0', sizeof(sendPacket_));
-    std::strcpy(sendPacket_, data.c_str());
+    int i = 0;
+    int len = data.length();
+
+    uint8_t packetData[PACKET_DATA_SIZE];
+    memset((uint8_t *) data, '\0', sizeof(data));
+    while (i < len) {
+        UdpPacket packet((uint8_t) 0, (uint8_t) 0);
+        // todo
+        
+        int dist = len - i;
+        if (dist >= PACKET_DATA_SIZE) {
+            memcpy((uint8_t *) data, (uint8_t *) &data[i], PACKET_DATA_SIZE);  
+        else {
+            memcpy((uint8_t *) data, (uint8_t *) &data[i], dist);
+        }
+        sendBuf_.append(packet);
+        i++;
+    }
 }
 
 UdpServer::UdpServer(int port)                                                     

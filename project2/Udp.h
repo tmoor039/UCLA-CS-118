@@ -6,25 +6,27 @@
 #include <netdb.h>
 #include <iostream>
 #include "globals.h"
+#include <vector>
 
 class UdpPacket {
 public:
     UdpPacket() {}
     UdpPacket(uint16_t srcPort, uint16_t destPort);
     bool insert_data(uint8_t data[]);
+    void set_length(uint16_t length);
 
 private:
     void set_checksum();
     // todo
     
-    uint8_t header_[8];
-    uint8_t data_[1024];
+    uint8_t header_[PACKET_HEADER_SIZE];
+    uint8_t data_[PACKET_DATA_SIZE];
 }
 
 class Udp {
 public:
     Udp() {}
-    Udp(int port);
+    Udp(uint16_t port);
     
     void set_send_buf(std::string data);
 
@@ -40,12 +42,12 @@ public:
     int get_port();
     
 protected:
-    int port_;
+    uint16_t port_;
     std::string addr_;
     std::string otherAddr_;
     int sfd_;
-    char recvPacket_[PACKET_SIZE];
-    char sendPacket_[PACKET_SIZE];
+    std::vector<UdpPacket> sendBuf_;
+    std::vector<UdpPacket> recvBuf_;
 };
 
 class UdpServer : public Udp {
