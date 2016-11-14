@@ -11,6 +11,6 @@
 #define MSS 1032 // This is Packet + Header
 #define MAX_SEQ 30720 // Reset SEQ back to 0 after exceeding
 #define SSTHRESH 15360 // Also start value for receiver window size
-#define RTO 500	// In ms
+#define RTO 500000 // In ms
 
 #endif // GLOBALS_H
