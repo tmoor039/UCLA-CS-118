@@ -24,7 +24,8 @@ TCP_Server::TCP_Server(uint16_t port)
 
 	// Attempt binding
 	if(m_status){
-		if(bind(m_sockFD, (struct sockaddr*)&m_serverInfo, sizeof(m_serverInfo)) == -1){
+		int retval = ::bind(m_sockFD, (struct sockaddr*)&m_serverInfo, sizeof(m_serverInfo));
+		if(retval == -1){
 			perror("Binding Error");
 			m_status = false;
 		}
@@ -86,8 +87,9 @@ bool TCP_Server::handshake(){
 	setTimeout(0, RTO, 1);
 
 	// Send SYN-ACK
-	fprintf(stdout, "Sending packet %d %d %d SYN\n", seq + 1, PACKET_SIZE, SSTHRESH);
-	m_packet = new TCP_Packet(rand()%MAX_SEQ + 1, seq + 1, PACKET_SIZE, 1, 1, 0);
+	uint16_t newSeq = rand() % MAX_SEQ + 1;
+	fprintf(stdout, "Sending packet %d %d %d SYN\n", newSeq, PACKET_SIZE, SSTHRESH);
+	m_packet = new TCP_Packet(newSeq, seq + 1, PACKET_SIZE, 1, 1, 0);
 	sendData(m_packet->encode());
 
 	// Retransmit data if timeout

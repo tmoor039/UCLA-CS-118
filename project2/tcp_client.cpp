@@ -18,7 +18,9 @@ TCP_Client::TCP_Client(string serverHost, uint16_t port)
 	m_serverInfo.sin_port = htons(port);
 	if(m_status){
 		// Convert hostname to ip address
-		if(inet_aton(serverHost.c_str(), &m_serverInfo.sin_addr) == 0){
+		string hostname = serverHost;
+		if(serverHost == "localhost") { hostname = "127.0.0.1"; }
+		if(inet_aton(hostname.c_str(), &m_serverInfo.sin_addr) == 0){
 			perror("Host name conversion Error");
 			m_status = false;
 		}
