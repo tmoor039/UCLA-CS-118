@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <errno.h>
 
 using namespace std;
 
@@ -26,7 +27,7 @@ int main(int argc, char* argv[]) {
 
 	TCP_Client tcpClient(string(argv[1]), serverPort);
 
-	if(tcpClient.handshake()){
+	if(!tcpClient.handshake()){
 		fprintf(stderr, "TCP Handshake Failure\n");
 		exit(1);
 	}

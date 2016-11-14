@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 	TCP_Server tcpServer(port);
 	tcpServer.setFilename(filename);
 
-	if (tcpServer.handshake()){
+	if (!tcpServer.handshake()){
 		fprintf(stderr, "The TCP handshake failed\n");
 		exit(1);
 	}
