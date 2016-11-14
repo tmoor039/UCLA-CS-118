@@ -23,6 +23,10 @@ public:
 
     virtual ssize_t send_packet(sockaddr* destAddr, socklen_t addrLen);
     virtual ssize_t send_packet() { return NULL; }
+
+    virtual char* getRecvPacket() { return recvPacket_; }
+    virtual char* getSendPacket() { return sendPacket_; }
+
     // accessors:
     int get_port();
     

@@ -17,9 +17,10 @@ bool TcpSendData(UdpServer &udpServer, string fileName) {
 bool TcpHandshake(UdpServer &udpServer) {
   sockaddr_storage peerAddr;
   socklen_t peerAddrLen = sizeof(sockaddr_storage);
+
   udpServer.receive_packet((sockaddr *) &peerAddr, &peerAddrLen);
   udpServer.set_send_buf("Message from server\n");
-  //udpServer.send_packet((sockaddr *) &peerAddr, peerAddrLen);
+  udpServer.send_packet((sockaddr *) &peerAddr, peerAddrLen);
   sleep(500);
   return 0;
 }

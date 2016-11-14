@@ -61,16 +61,16 @@ void Udp::set_timeout(float sec, float usec) {
   if (setsockopt(sfd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
     perror("Error");
   }
-  fprintf(stdout, "Set timeout to %f seconds\n", tv.tv_sec + tv.tv_usec / 1000000.0);
 }
 
 ssize_t Udp::receive_packet(sockaddr* srcAddr, socklen_t* addrLen) {
   ssize_t nread;
   nread = recvfrom(sfd_, recvPacket_, PACKET_SIZE, 0,
       srcAddr, addrLen);
-  if (nread == -1)
-    fprintf(stderr, "recvfrom error\n");
-  std::cout << std::string(recvPacket_) << std::endl;
+  if (nread == -1) {
+    //fprintf(stderr, "recvfrom error\n");
+  }
+  //std::cout << std::string(recvPacket_) << std::endl;
   return nread;
 }
 
@@ -78,7 +78,7 @@ ssize_t Udp::send_packet(sockaddr* destAddr, socklen_t addrLen) {
   ssize_t nsent;
   nsent = sendto(sfd_, sendPacket_, PACKET_SIZE, 0, destAddr, addrLen);
   if (nsent == -1) {
-    fprintf(stderr, "sendto error\n");
+    //fprintf(stderr, "sendto error\n");
   }
   return nsent;
 }
@@ -87,9 +87,9 @@ ssize_t UdpClient::receive_packet() {
   ssize_t nread;
   nread = recvfrom(sfd_, recvPacket_, PACKET_SIZE, 0, destAddr_, &destAddrLen_);
   if (nread == -1) {
-    fprintf(stderr, "recvfrom error\n");
+    //fprintf(stderr, "recvfrom error\n");
   }
-  std::cout << std::string(recvPacket_) << std::endl;
+  //std::cout << std::string(recvPacket_) << std::endl;
   return nread;
 }
 
