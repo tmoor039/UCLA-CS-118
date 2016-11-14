@@ -1,7 +1,5 @@
 #include "Udp.h"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
+#include <cstring>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "globals.h"
@@ -22,13 +20,11 @@ void Udp::set_send_buf(std::string data) {
   struct addrinfo hints;                                                         
   struct addrinfo *result, *rp;                                                  
   memset(&hints, 0, sizeof(hints));                                              
-  hints.ai_family = AF_UNSPEC;                                                   
+  hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_DGRAM; // for UDP                                     
   hints.ai_protocol = IPPROTO_UDP;                                               
-  //hints.ai_flags = AI_PASSIVE;                                                   
   // Find an address suitable for accepting connections                      
 
-  //int ret = getaddrinfo(NULL, std::to_string(port).c_str(), &hints, &result);
   int ret = getaddrinfo("localhost", std::to_string(port).c_str(), &hints, &result);
 
   if (ret != 0) {                                                                

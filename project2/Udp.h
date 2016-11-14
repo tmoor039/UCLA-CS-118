@@ -17,12 +17,12 @@ public:
 
     virtual ~Udp() {}
     virtual ssize_t receive_packet(sockaddr* srcAddr, socklen_t* addrLen);
-    virtual ssize_t receive_packet() { return NULL; }
+    virtual ssize_t receive_packet() = 0; 
     // receive packet from socket and returns number of bytes received.
     // srcAddr and addrLen get filled with addr info from source.
 
     virtual ssize_t send_packet(sockaddr* destAddr, socklen_t addrLen);
-    virtual ssize_t send_packet() { return NULL; }
+    virtual ssize_t send_packet() = 0;
 
     virtual char* getRecvPacket() { return recvPacket_; }
     virtual char* getSendPacket() { return sendPacket_; }
