@@ -12,6 +12,7 @@ public:
     Udp() {}
     Udp(int port);
     
+    void set_timeout(float sec, float usec);
     void set_send_buf(std::string data);
 
     virtual ~Udp() {}

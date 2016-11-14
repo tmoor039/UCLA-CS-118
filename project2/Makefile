@@ -1,3 +1,5 @@
+.PHONY: all clean server client
+
 all: server client
 
 clean:
