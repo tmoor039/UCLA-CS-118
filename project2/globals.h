@@ -2,7 +2,11 @@
 #define GLOBALS_H
 
 // All numbers are in terms of bytes unless otherwise stated
-
+#define SEQ 0
+#define ACK 1
+#define WIN 2
+#define FLAGS 3
+#define NUM_FIELDS 4
 #define PACKET_SIZE 1024 // Also Window Size
 #define MSS 1032 // This is Packet + Header
 #define MAX_SEQ 30720 // Reset SEQ back to 0 after exceeding
