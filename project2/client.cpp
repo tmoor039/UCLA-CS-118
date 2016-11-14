@@ -1,5 +1,6 @@
 #include <iostream>
 #include "Udp.h"
+#include <sys/time.h>
 
 using namespace std;
 
@@ -9,9 +10,10 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
     string serverHost = string(argv[1]);
-    int port = atoi(argv[2]);
+    int serverPort = atoi(argv[2]);
 
-    UdpClient udpClient(serverHost, port);
+    UdpClient udpClient(serverHost, serverPort);
+    udpClient.set_timeout(0, 500000);
     udpClient.set_send_buf("Message from client\n");
     udpClient.send_packet();
     udpClient.receive_packet();

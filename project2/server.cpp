@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     UdpServer udpServer(port);
     udpServer.receive_packet((sockaddr *) &peerAddr, &peerAddrLen);
     udpServer.set_send_buf("Message from server\n");
-    udpServer.send_packet((sockaddr *) &peerAddr, peerAddrLen);
+    //udpServer.send_packet((sockaddr *) &peerAddr, peerAddrLen);
 
     return 0;
 }
