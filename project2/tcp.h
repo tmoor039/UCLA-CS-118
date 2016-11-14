@@ -18,7 +18,7 @@ protected:
 
 public:
 	TCP(uint16_t port): m_port(port) {};
-	virtual ~TCP();
+	virtual ~TCP(){};
 	// Pure virtual methods
 	virtual bool handshake() = 0;
 	virtual bool sendData(uint8_t* data) = 0;
