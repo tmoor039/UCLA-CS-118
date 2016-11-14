@@ -1,4 +1,8 @@
 .PHONY: all clean server client
+CXX=g++
+CXXOPTIMIZE= -O2
+CXXFLAGS= -g -Wall -pthread -std=c++11 $(CXXOPTIMIZE)
+CLASSES=tcp.cpp Udp.cpp
 
 all: server client
 
@@ -11,10 +15,11 @@ clean:
 	then \
 		rm client ; \
 	fi;
+	rm -rf *.o *~ *.gch *.swp *.dSYM 
 
 
 server:
-	g++ -std=c++11 -Wall -O2 server.cpp Udp.cpp -o server
+	$(CXX) -o $@ $(CLASSES) $(CXXFLAGS) $@.cpp	
 
 client:
-	g++ -std=c++11 -Wall -O2 client.cpp Udp.cpp -o client
+	$(CXX) -o $@ $(CLASSES) $(CXXFLAGS) $@.cpp	
