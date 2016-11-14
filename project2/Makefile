@@ -16,7 +16,7 @@ clean:
 	then \
 		rm client ; \
 	fi;
-	rm -rf *.o *~ *.gch *.swp *.dSYM 
+	rm -rf *.o *~ *.gch *.swp *.dSYM client2 server2
 
 
 server:
