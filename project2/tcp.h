@@ -1,49 +1,82 @@
 #include "globals.h"
+#include "packet.h"
+#include <string.h>
+#include <string>
 #include <sys/types.h>
-#include "stdint.h"
+#include <arpa/inet.h>
+#include <sys/socket.h>
 
-class TCP_Packet {
-	struct TCP_Header {
-		uint16_t fields[NUM_FIELDS] = {0};
-		// Set Flags with the three LSB's holding the information
-		void setFlags(bool A, bool S, bool F) { fields[FLAGS] |= F | (S << 1) | (A << 2); }
-		bool encode(uint8_t* enc) {
-			// Break 2 byte values by high and low byte fields
-			if(enc){
-				for(ssize_t i = 0; i < 2 * NUM_FIELDS; i+=2){
-					enc[i] = fields[i/2] & 0xFF;
-					enc[i+1] = fields[i/2] >> 8;
-				}
-				return true;
-			}
-			return false;
-		}
-		bool decode(uint8_t* dec){
-			if(dec){
-				for(ssize_t i = 0; i < 2*NUM_FIELDS; i+=2){
-					fields[i/2] = (dec[i+1] << 8) | dec[i];
-				}
-				return true;
-			}
-			return false;
-		}
+// Abstract base TCP class
+class TCP {
 
-	} m_header;
-	uint8_t m_data[PACKET_SIZE] = {0};
+protected:
+	uint16_t m_port;
+	TCP_Packet* m_packet;
+	uint8_t m_recvBuffer[MSS];
+	uint8_t m_sendBuffer[MSS];
+	bool m_status = true;
 
 public:
-	// Single constructor with optional Data
-	TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win, bool f_ack, bool f_syn,
-			bool f_fin, uint8_t* data = nullptr);
-	// Constructor that decodes data stream into TCP Packet
-	TCP_Packet(uint8_t* enc_stream);
+	TCP(uint16_t port): m_port(port) {};
+	virtual ~TCP();
+	// Pure virtual methods
+	virtual bool handshake() = 0;
+	virtual bool sendData(uint8_t* data) = 0;
+	virtual bool receiveData() = 0;
+	virtual bool setTimeout(float sec, float usec, bool flag) = 0;
+	
 	// Accessors
-	uint8_t* getData() { return m_data; }
-	TCP_Header getHeader() { return m_header; }
+	uint16_t getPort() const { return m_port; }
+	uint8_t* getReceivedPacket() { return m_recvBuffer; }
+	uint8_t* getSentPacket() { return m_sendBuffer; }
+	bool getStatus() const { return m_status; }
+};
 
-	uint8_t* encode();
+// TCP Server
+class TCP_Server: TCP {
+	std::string m_filename;
+	struct sockaddr_in m_serverInfo, m_clientInfo;
+	socklen_t m_cliLen = sizeof(m_clientInfo);
+	int m_sockFD;
+
+public:
+	TCP_Server(uint16_t port);
+
+	bool handshake() override;
+	bool sendData(uint8_t* data) override;
+	bool receiveData() override;
+	bool setTimeout(float sec, float usec, bool flag) override;
+
+	// Break file into chunks
+	// void breakFile(std::string filename);
+
+	// Accessors
+	int getSocketFD() const { return m_sockFD; }
+	std::string getFilename() const { return m_filename; }
 
 	// Mutators
-	bool setData(uint8_t* data);
+	void setFilename(std::string filename) { m_filename = filename; }
 
 };
+
+// TCP Client
+class TCP_Client: TCP {
+	std::string m_serverHost;
+	struct sockaddr_in m_serverInfo;
+	socklen_t m_serverLen = sizeof(m_serverInfo);
+	int m_sockFD;
+
+public:
+	TCP_Client(std::string serverHost, uint16_t port);
+
+	bool handshake() override;
+	bool sendData(uint8_t* data) override;
+	bool receiveData() override;
+	bool setTimeout(float sec, float usec, bool flag) override;
+
+	// Accessors
+	int getSocketFD() const { return m_sockFD; }
+	std::string getServerHost() const { return m_serverHost; }
+
+};
+
