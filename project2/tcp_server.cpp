@@ -21,8 +21,36 @@ bool TCP::add_send_data(uint8_t* data, int len) {
             i += len;
             len -= len;
         }
+		m_sendBuf.push_back(packet);
     }
     return true;
+}
+
+bool TCP::recv_data(sockaddr* srcAddr, socklen_t* addrLen) {
+	// arguments are filled in by recvfrom
+
+	ssize_t nread;
+	uint8_t recvData[PACKET_SIZE];
+	memset(recvData, '\0', sizeof(recvData));
+	nread = recvfrom(m_sockFD, recvData, PACKET_SIZE, 0,
+			srcAddr, addrLen);
+	if (nread == -1) {
+		fprintf(stderr, "recvfrom error\n");
+		return false;
+	}
+	else {
+		m_recvBuf.push_back(pack(recvData));
+	}
+	return true;
+}
+
+uint8_t* TCP::unpack(TCP_Packet packet) {
+    uint8_t packetData[PACKET_SIZE];
+    memset(packetData, '\0', PACKET_SIZE);
+    memcpy(&packetData[0], packet.get_header(), PACKET_HEADER_SIZE);
+    memcpy(&packetData[PACKET_HEADER_SIZE], packet.get_data(), 
+        PACKET_DATA_SIZE);
+    return packetData;
 }
 
 TCP_Server::TCP_Server(uint16_t port)
@@ -65,23 +93,14 @@ TCP_Server::TCP_Server(uint16_t port)
 bool TCP_Server::send_data() {
     int nPackets = m_sendBuf.size();
     for (int i = 0; i < nPackets; i++) {
-        uint8_t packetData[PACKET_SIZE];
-        memset(packetData, '\0', PACKET_SIZE);
-        memcpy(&packetData[0], m_sendBuf.get_header(), PACKET_HEADER_SIZE);
-        memcpy(&packetData[PACKET_HEADER_SIZE], m_sendBuf.get_data(), 
-            PACKET_DATA_SIZE);
         int nsent;
-        nsent = sendto(m_sfd, packetData, m_destAddr, m_addrLen);
+        nsent = sendto(m_sockFD, unpack(m_sendBuf.at(i)), m_destAddr, m_addrLen);
         if (nsent == -1) {
             perror("TCP_Server sending error\n");
             return false;
         }
     }
     return true;
-}
-
-bool TCP_Server::recv_data() {
-    
 }
 
 bool TCP_Server::sendData(uint8_t* data) {

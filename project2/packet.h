@@ -10,7 +10,7 @@ public:
         uint8_t* data, int len);
 
     // used for receiving packets
-    TCP_Packet(uint8_t* encStream);
+    TCP_Packet(uint8_t* packetBytes);
 
     bool insert_data(uint8_t data[], int len);
 

@@ -61,26 +61,17 @@ TCP_Client::TCP_Client(string serverHost, uint16_t port)
      */
 }
 
-bool TCP_Server::add_send_data(uint8_t* data, int len) {                           
-    int i = 0;                                                                     
-    while (len > 0) {                                                              
-        uint16_t flags = 0;                                                        
-        // todo                                                                    
-
-        TCP_Packet packet(m_seq, 0, 0, flags);                                     
-        if (len >= PACKET_DATA_SIZE) {                                             
-            packet.insert_data(&data[i], PACKET_DATA_SIZE);                        
-            i += PACKET_DATA_SIZE;                                                 
-            len -= PACKET_DATA_SIZE;                                               
-        }                                                                          
-        else {                                                                     
-            packet.insert_data(&data[i], len);                                     
-            i += len;                                                              
-            len -= len;                                                            
-        }                                                                          
-    }                                                                              
-    return true;                                                                   
-} 
+bool TCP_Client::send_data() {
+    int nPackets = m_sendBuf.size();
+    for (int i = 0; i < nPackets; i++) {
+        len = write(m_sockFD, unpack(m_sendBuf.at(i)), PACKET_SIZE);
+        if (len != PACKET_SIZE) {
+            perror("TCP_Client sending error\n");
+            return false;
+        }
+    }
+    return true;
+}
 
 bool TCP_Client::sendData(uint8_t* data){
     // Clear out the send buffer

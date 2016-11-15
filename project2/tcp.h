@@ -18,6 +18,10 @@ protected:
     // uint8_t m_recvBuffer[MSS];
 	// uint8_t m_sendBuffer[MSS];
 	bool m_status = true;
+	int m_sockFD;
+    uint8_t* unpack(TCP_Packet packet);
+    // converts packet to uint8_t[PACKET_SIZE]
+
 
 public:
 	TCP(uint16_t port): m_port(port) {};
@@ -30,9 +34,9 @@ public:
 
     bool add_send_data(uint8_t* data, int len);
     virtual bool send_data() = 0;
-    virtual bool recv_data() = 0;
+    bool recv_data();
     // add data to send buffer
-	
+
 	// Accessors
 	uint16_t getPort() const { return m_port; }
 	uint8_t* getReceivedPacket() { return m_recvBuffer; }
@@ -45,7 +49,6 @@ class TCP_Server: TCP {
 	std::string m_filename;
 	struct sockaddr_in m_serverInfo, m_clientInfo;
 	socklen_t m_cliLen = sizeof(m_clientInfo);
-	int m_sockFD;
 
     uint16_t m_seq;
 
@@ -53,7 +56,6 @@ class TCP_Server: TCP {
 public:
 	TCP_Server(uint16_t port);
     bool send_data() override;
-    bool recv_data() override;
 	bool handshake() override;
 	bool sendData(uint8_t* data) override;
 	bool receiveData() override;
@@ -76,13 +78,11 @@ class TCP_Client: TCP {
 	std::string m_serverHost;
 	struct sockaddr_in m_serverInfo;
 	socklen_t m_serverLen = sizeof(m_serverInfo);
-	int m_sockFD;
 
 public:
 	TCP_Client(std::string serverHost, uint16_t port);
 
     bool send_data() override;
-    bool recv_data() override;
 	bool handshake() override;
 	bool sendData(uint8_t* data) override;
 	bool receiveData() override;
