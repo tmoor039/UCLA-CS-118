@@ -6,6 +6,38 @@ using namespace std;
 TCP_Client::TCP_Client(string serverHost, uint16_t port)
 	: TCP(port), m_serverHost(serverHost)
 {
+	struct addrinfo hints;                                                           
+	struct addrinfo *result, *rp;                                                    
+	memset(&hints, 0, sizeof(hints));                                                
+	hints.ai_family = AF_UNSPEC;                                                     
+	hints.ai_socktype = SOCK_DGRAM; // for UDP                                       
+	hints.ai_protocol = IPPROTO_UDP;                                                 
+
+	int ret = getaddrinfo(serverHost_.c_str(),                                       
+			std::to_string(port).c_str(), &hints, &result);                              
+	if (ret != 0) {                                                                  
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));                       
+	}                                                                                
+	int sfd;                                                                         
+	for (rp = result; rp != NULL; rp = rp->ai_next) {                                
+		sfd = socket(rp->ai_family, rp->ai_socktype,                                   
+				rp->ai_protocol);                                                          
+		if (sfd == -1)                                                                 
+			continue;                                                                    
+		ret = connect(sfd, rp->ai_addr, rp->ai_addrlen);                               
+		if (ret != -1) {                                                               
+			sfd_ = sfd;                                                                  
+			destAddr_ = rp->ai_addr;                                                     
+			destAddrLen_ = rp->ai_addrlen;                                               
+			break;  // success                                                           
+		}                                                                              
+		close(sfd);                                                                    
+	}                                                                                
+	if (rp == NULL) {                                                                
+		fprintf(stderr, "Could not connect with socket address\n");                    
+	}                                                                                
+	freeaddrinfo(result);
+/*
 	// Create a socket under UDP Protocol
 	m_sockFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if(m_sockFD == -1){
@@ -26,6 +58,7 @@ TCP_Client::TCP_Client(string serverHost, uint16_t port)
 		}
 	}
 	// No need to connect since UDP is connectionless
+*/
 }
 
 bool TCP_Client::sendData(uint8_t* data){

@@ -5,15 +5,18 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <vector>
 
 // Abstract base TCP class
 class TCP {
 
 protected:
 	uint16_t m_port;
-	TCP_Packet* m_packet;
-	uint8_t m_recvBuffer[MSS];
-	uint8_t m_sendBuffer[MSS];
+    //    TCP_Packet* m_packet;
+    std::vector<TCP_Packet> m_recvBuf;
+    std::vector<TCP_Packet> m_sendBuf;
+    // uint8_t m_recvBuffer[MSS];
+	// uint8_t m_sendBuffer[MSS];
 	bool m_status = true;
 
 public:
@@ -24,6 +27,9 @@ public:
 	virtual bool sendData(uint8_t* data) = 0;
 	virtual bool receiveData() = 0;
 	virtual bool setTimeout(float sec, float usec, bool flag) = 0;
+
+    virtual bool add_send_data(uint8_t* data, int len) = 0;
+    // add data to send buffer
 	
 	// Accessors
 	uint16_t getPort() const { return m_port; }
@@ -39,9 +45,13 @@ class TCP_Server: TCP {
 	socklen_t m_cliLen = sizeof(m_clientInfo);
 	int m_sockFD;
 
+    uint16_t m_seq;
+
+
 public:
 	TCP_Server(uint16_t port);
-
+    bool add_send_data(uint8_t* data, int len) override;
+    bool send_data();
 	bool handshake() override;
 	bool sendData(uint8_t* data) override;
 	bool receiveData() override;

@@ -14,7 +14,7 @@ void Udp::set_send_buf(std::string data) {
   std::strcpy(sendPacket_, data.c_str());
 }
 
-  UdpServer::UdpServer(int port)                                                     
+UdpServer::UdpServer(int port)                                                     
 : Udp(port)
 {                                                                                  
   struct addrinfo hints;                                                         
@@ -104,7 +104,7 @@ ssize_t UdpClient::send_packet() {
   //return nsent;
 }
 
-  UdpClient::UdpClient(std::string serverHost, int port)
+UdpClient::UdpClient(std::string serverHost, int port)
 : Udp(port), serverHost_(serverHost) 
 {
   struct addrinfo hints;
