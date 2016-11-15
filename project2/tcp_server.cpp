@@ -1,9 +1,29 @@
 #include "tcp.h"
 #include <iostream>
 #include <stdlib.h>
-#include <vector>
 
 using namespace std;
+
+bool TCP::add_send_data(uint8_t* data, int len) {
+    int i = 0;
+    while (len > 0) {
+        uint16_t flags = 0;
+        // todo
+
+        TCP_Packet packet(m_seq, 0, 0, flags);
+        if (len >= PACKET_DATA_SIZE) {
+            packet.insert_data(&data[i], PACKET_DATA_SIZE);
+            i += PACKET_DATA_SIZE;
+            len -= PACKET_DATA_SIZE;
+        }
+        else {
+            packet.insert_data(&data[i], len);
+            i += len;
+            len -= len;
+        }
+    }
+    return true;
+}
 
 TCP_Server::TCP_Server(uint16_t port)
     : TCP(port)
@@ -41,29 +61,26 @@ TCP_Server::TCP_Server(uint16_t port)
     freeaddrinfo(result);
 }
 
-bool TCP_Server::add_send_data(uint8_t* data, int len) {
-    int i = 0;
-    while (len > 0) {
-        uint16_t flags = 0;
-        // todo
 
-        TCP_Packet packet(m_seq, 0, 0, flags);
-        if (len >= PACKET_DATA_SIZE) {
-            packet.insert_data(&data[i], PACKET_DATA_SIZE);
-            i += PACKET_DATA_SIZE;
-            len -= PACKET_DATA_SIZE;
-        }
-        else {
-            packet.insert_data(&data[i], len);
-            i += len;
-            len -= len;
+bool TCP_Server::send_data() {
+    int nPackets = m_sendBuf.size();
+    for (int i = 0; i < nPackets; i++) {
+        uint8_t packetData[PACKET_SIZE];
+        memset(packetData, '\0', PACKET_SIZE);
+        memcpy(&packetData[0], m_sendBuf.get_header(), PACKET_HEADER_SIZE);
+        memcpy(&packetData[PACKET_HEADER_SIZE], m_sendBuf.get_data(), 
+            PACKET_DATA_SIZE);
+        int nsent;
+        nsent = sendto(m_sfd, packetData, m_destAddr, m_addrLen);
+        if (nsent == -1) {
+            perror("TCP_Server sending error\n");
+            return false;
         }
     }
-
     return true;
 }
 
-bool TCP_Server::send_data() {
+bool TCP_Server::recv_data() {
     
 }
 

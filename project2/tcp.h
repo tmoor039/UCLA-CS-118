@@ -28,7 +28,9 @@ public:
 	virtual bool receiveData() = 0;
 	virtual bool setTimeout(float sec, float usec, bool flag) = 0;
 
-    virtual bool add_send_data(uint8_t* data, int len) = 0;
+    bool add_send_data(uint8_t* data, int len);
+    virtual bool send_data() = 0;
+    virtual bool recv_data() = 0;
     // add data to send buffer
 	
 	// Accessors
@@ -50,8 +52,8 @@ class TCP_Server: TCP {
 
 public:
 	TCP_Server(uint16_t port);
-    bool add_send_data(uint8_t* data, int len) override;
-    bool send_data();
+    bool send_data() override;
+    bool recv_data() override;
 	bool handshake() override;
 	bool sendData(uint8_t* data) override;
 	bool receiveData() override;
@@ -79,6 +81,8 @@ class TCP_Client: TCP {
 public:
 	TCP_Client(std::string serverHost, uint16_t port);
 
+    bool send_data() override;
+    bool recv_data() override;
 	bool handshake() override;
 	bool sendData(uint8_t* data) override;
 	bool receiveData() override;
