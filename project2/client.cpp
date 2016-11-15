@@ -76,8 +76,9 @@ int main(int argc, char* argv[]) {
   int serverPort = atoi(argv[2]);
 
   UdpClient udpClient(serverHost, serverPort);
+    udpClient.handshake();
 
-  if (TcpHandshake(udpClient) != 0) {
+  /*if (TcpHandshake(udpClient) != 0) {
     fprintf(stderr, "The TCP handshake failed\n");
     exit(1);
   }
@@ -85,7 +86,7 @@ int main(int argc, char* argv[]) {
   if (TcpReceiveData(udpClient) != 0) {
     fprintf(stderr, "Failed to receive data\n");
     exit(1);
-  }
+  }*/
 
   return 0;
 }

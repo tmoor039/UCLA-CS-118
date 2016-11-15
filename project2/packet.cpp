@@ -25,15 +25,15 @@ TCP_Packet::TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win,
     insert_data(data, len);
 }
 
-TCP_Packet::TCP_Packet(uint8_t* packetData) {
-    memcpy(m_header, packetData, PACKET_HEADER_SIZE);
+TCP_Packet::TCP_Packet(uint8_t* packetBytes) {
+    memcpy(m_header, packetBytes, PACKET_HEADER_SIZE);
     memset(m_data, '\0', PACKET_DATA_SIZE);
-    memcpy(m_data, &packetData[PACKET_HEADER_SIZE], PACKET_DATA_SIZE);
+    memcpy(m_data, &packetBytes[PACKET_HEADER_SIZE], PACKET_DATA_SIZE);
 }
 
-bool TCP_Packet::insert_data(uint8_t data[], len) {
+bool TCP_Packet::insert_data(uint8_t data[], int len) {
     if (len > PACKET_DATA_SIZE) {
-        fprintf(stderr, "cannot insert %d bytes to packet\n");
+        fprintf(stderr, "cannot insert %d bytes to packet\n", len);
         return false;
     }
     memcpy(m_data, data, len);
@@ -46,7 +46,7 @@ uint8_t* TCP_Packet::get_header() {
     return m_header;
 }
 
-uint8_t* TCP:Packet::get_data() {
+uint8_t* TCP_Packet::get_data() {
     return m_data;
 }
 

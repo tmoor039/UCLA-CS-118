@@ -1,5 +1,6 @@
 #include "tcp.h"
 #include <stdlib.h>
+#include <string.h>
 
 using namespace std;
 
@@ -26,9 +27,9 @@ TCP_Client::TCP_Client(string serverHost, uint16_t port)
             continue;                                                                    
         ret = connect(sfd, rp->ai_addr, rp->ai_addrlen);                               
         if (ret != -1) {                                                               
-            sfd_ = sfd;                                                                  
-            destAddr_ = rp->ai_addr;                                                     
-            destAddrLen_ = rp->ai_addrlen;                                               
+            m_sockFD = sfd;                                                                  
+            m_destAddr = rp->ai_addr;                                                     
+            m_destAddrLen_ = rp->ai_addrlen;                                               
             break;  // success                                                           
         }                                                                              
         close(sfd);                                                                    
@@ -114,7 +115,19 @@ bool TCP_Client::setTimeout(float sec, float usec, bool flag){
     return true;
 }
 
-bool TCP_Client::handshake(){
+bool TCP_Client::handshake() {
+    std::cout << "Sending packet 0 SYN\n";
+
+    char* clientMessage = "Message from client\n";
+    
+    add_send_data(clientMessage, strlen(clientMessage));
+    send_data();
+
+    recv_data();
+    std::cout << m_recvBuf.at(0).get_data() << std::endl;
+}
+
+/*bool TCP_Client::handshake(){
     // Send the very first packet
     fprintf(stdout, "Sending packet 0 SYN\n");
     // Set Sending timeout
@@ -154,4 +167,4 @@ bool TCP_Client::handshake(){
     fprintf(stdout, "Receiving packet %hu\n", seq);
     // Delete packet here or nah?
     return true;
-}
+}*/

@@ -22,26 +22,33 @@ protected:
     uint8_t* unpack(TCP_Packet packet);
     // converts packet to uint8_t[PACKET_SIZE]
 
+    sockaddr* m_destAddr;
+    socklen_t m_destAddrLen;
 
 public:
-	TCP(uint16_t port): m_port(port) {};
+	TCP(uint16_t port) 
+        : m_port(port), m_destAddr(NULL), m_destAddrLen(0) {};
+
 	virtual ~TCP(){};
 	// Pure virtual methods
 	virtual bool handshake() = 0;
-	virtual bool sendData(uint8_t* data) = 0;
-	virtual bool receiveData() = 0;
-	virtual bool setTimeout(float sec, float usec, bool flag) = 0;
+	//virtual bool sendData(uint8_t* data) = 0;
+	//virtual bool receiveData() = 0;
+	//virtual bool setTimeout(float sec, float usec, bool flag) = 0;
 
     bool add_send_data(uint8_t* data, int len);
-    virtual bool send_data() = 0;
-    bool recv_data();
+    virtual bool send_data(sockaddr* srcAddr, socklen_t addrLen) = 0;
+    bool recv_data(sockaddr* srcAddr, socklen_t* addrLen);
     // add data to send buffer
 
-	// Accessors
-	uint16_t getPort() const { return m_port; }
-	uint8_t* getReceivedPacket() { return m_recvBuffer; }
-	uint8_t* getSentPacket() { return m_sendBuffer; }
-	bool getStatus() const { return m_status; }
+    void set_dest_addr(sockaddr* destAddr, socklen_t addrLen);
+    
+
+	//// Accessors
+	//uint16_t getPort() const { return m_port; }
+	//uint8_t* getReceivedPacket() { return m_recvBuffer; }
+	//uint8_t* getSentPacket() { return m_sendBuffer; }
+	//bool getStatus() const { return m_status; }
 };
 
 // TCP Server
@@ -55,21 +62,21 @@ class TCP_Server: TCP {
 
 public:
 	TCP_Server(uint16_t port);
-    bool send_data() override;
+    bool send_data(sockaddr* srcAddr, socklen_t addrLen) override;
 	bool handshake() override;
-	bool sendData(uint8_t* data) override;
-	bool receiveData() override;
-	bool setTimeout(float sec, float usec, bool flag) override;
+	//bool sendData(uint8_t* data) override;
+	//bool receiveData() override;
+    //bool setTimeout(float sec, float usec, bool flag) override;
 
 	// Break file into chunks
 	// void breakFile(std::string filename);
 
 	// Accessors
-	int getSocketFD() const { return m_sockFD; }
-	std::string getFilename() const { return m_filename; }
+    //int getSocketFD() const { return m_sockFD; }
+    //std::string getFilename() const { return m_filename; }
 
 	// Mutators
-	void setFilename(std::string filename) { m_filename = filename; }
+	//void setFilename(std::string filename) { m_filename = filename; }
 
 };
 
@@ -79,17 +86,20 @@ class TCP_Client: TCP {
 	struct sockaddr_in m_serverInfo;
 	socklen_t m_serverLen = sizeof(m_serverInfo);
 
+    sockaddr* m_destAddr;
+    socklen_t m_destAddrLen;
+
 public:
 	TCP_Client(std::string serverHost, uint16_t port);
 
-    bool send_data() override;
+    bool send_data(sockaddr* srcAddr, socklen_t addrLen) override;
 	bool handshake() override;
-	bool sendData(uint8_t* data) override;
-	bool receiveData() override;
-	bool setTimeout(float sec, float usec, bool flag) override;
+	//bool sendData(uint8_t* data) override;
+	//bool receiveData() override;
+	//bool setTimeout(float sec, float usec, bool flag) override;
 
 	// Accessors
-	int getSocketFD() const { return m_sockFD; }
+	//int getSocketFD() const { return m_sockFD; }
 	std::string getServerHost() const { return m_serverHost; }
 
 };

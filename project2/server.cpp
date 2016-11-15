@@ -1,5 +1,5 @@
 #include <iostream>
-#include "Udp.h"                                                                   
+//#include "Udp.h"                                                                   
 #include "packet.h"
 #include <sys/types.h>                                                             
 #include <sys/socket.h>                                                            
@@ -7,9 +7,10 @@
 #include <arpa/inet.h>                                                             
 #include <unistd.h>                                                                
 #include <stdlib.h>
+#include "tcp.h"
 
 using namespace std;
-
+/*
 bool TcpSendData(UdpServer &udpServer, string fileName) {
 	sleep(500);
 	return 0;
@@ -57,7 +58,7 @@ bool TcpHandshake(UdpServer &udpServer) {
 	fprintf(stdout, "Receiving packet %hu\n", ack);
 	return 0;
 }
-
+*/
 int main(int argc, char* argv[]) {
 	if (argc != 3) {
 		fprintf(stderr, "Usage: %s <port-number> <file-name>\n", argv[0]);
@@ -66,9 +67,10 @@ int main(int argc, char* argv[]) {
 	int port = atoi(argv[1]);
 	string filename = argv[2];
 
-	UdpServer udpServer(port);
+	TCP_Server tcpServer(port);
+    tcpServer.handshake();
 
-	if (TcpHandshake(udpServer) != 0) {
+	/*if (TcpHandshake(udpServer) != 0) {
 		fprintf(stderr, "The TCP handshake failed\n");
 		exit(1);
 	}
@@ -76,7 +78,7 @@ int main(int argc, char* argv[]) {
 	if (TcpSendData(udpServer, filename) != 0) {
 		fprintf(stderr, "Failed to send data\n");
 		exit(1);
-	}
+	}*/
 
 	return 0;
 }

@@ -1,8 +1,14 @@
 #include "tcp.h"
 #include <iostream>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include "globals.h"
+#include <vector>
+#include <unistd.h>
 
-using namespace std;
+//using namespace std;
 
 bool TCP::add_send_data(uint8_t* data, int len) {
     int i = 0;
@@ -10,7 +16,8 @@ bool TCP::add_send_data(uint8_t* data, int len) {
         uint16_t flags = 0;
         // todo
 
-        TCP_Packet packet(m_seq, 0, 0, flags);
+        //TCP_Packet packet(m_seq, 0, 0, flags);
+        TCP_Packet packet(0, 0, 0, flags);
         if (len >= PACKET_DATA_SIZE) {
             packet.insert_data(&data[i], PACKET_DATA_SIZE);
             i += PACKET_DATA_SIZE;
@@ -39,13 +46,16 @@ bool TCP::recv_data(sockaddr* srcAddr, socklen_t* addrLen) {
 		return false;
 	}
 	else {
-		m_recvBuf.push_back(pack(recvData));
+        TCP_Packet packet(recvData);
+		m_recvBuf.push_back(packet);
 	}
 	return true;
 }
 
 uint8_t* TCP::unpack(TCP_Packet packet) {
-    uint8_t packetData[PACKET_SIZE];
+    uint8_t* packetData = new uint8_t[PACKET_SIZE];
+    // MEMORY ALLOC
+
     memset(packetData, '\0', PACKET_SIZE);
     memcpy(&packetData[0], packet.get_header(), PACKET_HEADER_SIZE);
     memcpy(&packetData[PACKET_HEADER_SIZE], packet.get_data(), 
@@ -53,11 +63,16 @@ uint8_t* TCP::unpack(TCP_Packet packet) {
     return packetData;
 }
 
+void TCP::set_dest_addr(sockaddr* destAddr, socklen_t addrLen) {
+    m_destAddr = destAddr;
+    m_destAddrLen = addrLen;
+}
+
 TCP_Server::TCP_Server(uint16_t port)
     : TCP(port)
 {
-    struct addrinfo hints;                                                           
-    struct addrinfo *result, *rp;                                                    
+    addrinfo hints;                                                           
+    addrinfo *result, *rp;                                                    
     memset(&hints, 0, sizeof(hints));                                                
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM; // for UDP
@@ -67,7 +82,7 @@ TCP_Server::TCP_Server(uint16_t port)
     int ret = getaddrinfo("localhost", std::to_string(port).c_str(), &hints, &result);
 
     if (ret != 0) { 
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));
+        fprintf(stderr, "getaddrinfo: %s\n", strerror(ret));
     }
 
     int sfd;
@@ -78,7 +93,7 @@ TCP_Server::TCP_Server(uint16_t port)
             continue;  
         ret = bind(sfd, rp->ai_addr, rp->ai_addrlen); 
         if (ret != -1) {  
-            sfd_ = sfd;                                                                  
+            m_sockFD = sfd;                                                                  
             break;  // success
         }                                                                              
         close(sfd);
@@ -90,7 +105,7 @@ TCP_Server::TCP_Server(uint16_t port)
 }
 
 
-bool TCP_Server::send_data() {
+bool TCP_Server::send_data(sockaddr* srcAddr, socklen_t addrLen) {
     int nPackets = m_sendBuf.size();
     for (int i = 0; i < nPackets; i++) {
         int nsent;
@@ -144,6 +159,23 @@ bool TCP_Server::setTimeout(float sec, float usec, bool flag){
     return true;
 }
 
+bool TCP_Server::handshake() {
+    sockaddr srcAddr;
+    socklen_t addrLen;
+    recv_data(srcAddr, addrLen);
+
+    // print received data
+    for (int i = 0; i < m_recvBuf.size(); i++) {
+        std::cout << m_recvBuf.at(i).get_data();
+    }
+    std::cout << std::endl;
+
+    // return a message to client
+    char* serverMessage = "Message from server\n";
+    set_send_data(serverMessage, strlen(serverMessage));
+}
+
+/*
 bool TCP_Server::handshake(){
     // First receive packet from client
     while(!receiveData()){
@@ -178,4 +210,4 @@ bool TCP_Server::handshake(){
     fprintf(stdout, "Receiving packet %hu\n", ack);
     // Delete packet or not?
     return true;
-}
+}*/

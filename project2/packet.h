@@ -25,7 +25,7 @@ public:
 private:
     uint8_t m_header[PACKET_HEADER_SIZE];
     uint8_t m_data[PACKET_DATA_SIZE];
-}
+};
 /*
 class TCP_Packet {
     struct TCP_Header {
