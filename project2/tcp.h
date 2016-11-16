@@ -1,3 +1,6 @@
+#ifndef TCP_H
+#define TCP_H
+
 #include "globals.h"
 #include "packet.h"
 #include <string.h>
@@ -7,9 +10,10 @@
 #include <sys/socket.h>
 #include <vector>
 
+class TCP_Packet;
+
 // Abstract base TCP class
 class TCP {
-
 protected:
 	uint16_t m_port;
     //    TCP_Packet* m_packet;
@@ -37,8 +41,10 @@ public:
 	//virtual bool setTimeout(float sec, float usec, bool flag) = 0;
 
     bool add_send_data(uint8_t* data, int len);
-    virtual bool send_data(sockaddr* srcAddr, socklen_t addrLen) = 0;
-    bool recv_data(sockaddr* srcAddr, socklen_t* addrLen);
+    virtual bool send_data(sockaddr* srcAddr = NULL, 
+        socklen_t addrLen = 0) = 0;
+
+    bool recv_data(sockaddr* srcAddr = NULL, socklen_t* addrLen = NULL);
     // add data to send buffer
 
     void set_dest_addr(sockaddr* destAddr, socklen_t addrLen);
@@ -54,15 +60,15 @@ public:
 // TCP Server
 class TCP_Server: TCP {
 	std::string m_filename;
-	struct sockaddr_in m_serverInfo, m_clientInfo;
-	socklen_t m_cliLen = sizeof(m_clientInfo);
+	//struct sockaddr_in m_serverInfo, m_clientInfo;
+	//socklen_t m_cliLen = sizeof(m_clientInfo);
 
-    uint16_t m_seq;
+    //uint16_t m_seq;
 
 
 public:
 	TCP_Server(uint16_t port);
-    bool send_data(sockaddr* srcAddr, socklen_t addrLen) override;
+    bool send_data(sockaddr* destAddr = NULL, socklen_t addrLen = 0) override;
 	bool handshake() override;
 	//bool sendData(uint8_t* data) override;
 	//bool receiveData() override;
@@ -83,8 +89,8 @@ public:
 // TCP Client
 class TCP_Client: TCP {
 	std::string m_serverHost;
-	struct sockaddr_in m_serverInfo;
-	socklen_t m_serverLen = sizeof(m_serverInfo);
+	//struct sockaddr_in m_serverInfo;
+	//socklen_t m_serverLen = sizeof(m_serverInfo);
 
     sockaddr* m_destAddr;
     socklen_t m_destAddrLen;
@@ -92,7 +98,8 @@ class TCP_Client: TCP {
 public:
 	TCP_Client(std::string serverHost, uint16_t port);
 
-    bool send_data(sockaddr* srcAddr, socklen_t addrLen) override;
+    //bool recv_data(sockaddr* srcAddr = NULL, socklen_t* addrLen = NULL) override;
+    bool send_data(sockaddr* srcAddr = NULL, socklen_t addrLen = 0) override;
 	bool handshake() override;
 	//bool sendData(uint8_t* data) override;
 	//bool receiveData() override;
@@ -104,3 +111,4 @@ public:
 
 };
 
+#endif // TCP_H

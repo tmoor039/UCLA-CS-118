@@ -1,5 +1,6 @@
 #include <iostream>
 //#include "Udp.h"                                                                   
+#include "tcp.h"
 #include "packet.h"
 #include <sys/types.h>                                                             
 #include <sys/socket.h>                                                            
@@ -7,7 +8,6 @@
 #include <arpa/inet.h>                                                             
 #include <unistd.h>                                                                
 #include <stdlib.h>
-#include "tcp.h"
 
 using namespace std;
 /*

@@ -7,6 +7,7 @@
 #include "globals.h"
 #include <vector>
 #include <unistd.h>
+#include <string.h>
 
 //using namespace std;
 
@@ -33,25 +34,6 @@ bool TCP::add_send_data(uint8_t* data, int len) {
     return true;
 }
 
-bool TCP::recv_data(sockaddr* srcAddr, socklen_t* addrLen) {
-	// arguments are filled in by recvfrom
-
-	ssize_t nread;
-	uint8_t recvData[PACKET_SIZE];
-	memset(recvData, '\0', sizeof(recvData));
-	nread = recvfrom(m_sockFD, recvData, PACKET_SIZE, 0,
-			srcAddr, addrLen);
-	if (nread == -1) {
-		fprintf(stderr, "recvfrom error\n");
-		return false;
-	}
-	else {
-        TCP_Packet packet(recvData);
-		m_recvBuf.push_back(packet);
-	}
-	return true;
-}
-
 uint8_t* TCP::unpack(TCP_Packet packet) {
     uint8_t* packetData = new uint8_t[PACKET_SIZE];
     // MEMORY ALLOC
@@ -61,6 +43,25 @@ uint8_t* TCP::unpack(TCP_Packet packet) {
     memcpy(&packetData[PACKET_HEADER_SIZE], packet.get_data(), 
         PACKET_DATA_SIZE);
     return packetData;
+}
+
+bool TCP::recv_data(sockaddr* destAddr /*=NULL*/, socklen_t* addrLen /*=NULL*/) {
+	// arguments are filled in by recvfrom
+
+	ssize_t nread;
+	uint8_t recvData[PACKET_SIZE];
+	memset(recvData, '\0', sizeof(recvData));
+	nread = recvfrom(m_sockFD, recvData, PACKET_SIZE, 0,
+			destAddr, addrLen);
+	if (nread == -1) {
+		fprintf(stderr, "recvfrom error\n");
+		return false;
+	}
+	else {
+        TCP_Packet packet(recvData);
+		m_recvBuf.push_back(packet);
+	}
+	return true;
 }
 
 void TCP::set_dest_addr(sockaddr* destAddr, socklen_t addrLen) {
@@ -104,12 +105,12 @@ TCP_Server::TCP_Server(uint16_t port)
     freeaddrinfo(result);
 }
 
-
-bool TCP_Server::send_data(sockaddr* srcAddr, socklen_t addrLen) {
+bool TCP_Server::send_data(sockaddr* destAddr /*=NULL*/, socklen_t addrLen /*=0*/) {
     int nPackets = m_sendBuf.size();
     for (int i = 0; i < nPackets; i++) {
         int nsent;
-        nsent = sendto(m_sockFD, unpack(m_sendBuf.at(i)), m_destAddr, m_addrLen);
+        nsent = sendto(m_sockFD, unpack(m_sendBuf.at(i)), PACKET_SIZE, 0,
+            destAddr, addrLen);
         if (nsent == -1) {
             perror("TCP_Server sending error\n");
             return false;
@@ -117,7 +118,7 @@ bool TCP_Server::send_data(sockaddr* srcAddr, socklen_t addrLen) {
     }
     return true;
 }
-
+/*
 bool TCP_Server::sendData(uint8_t* data) {
     // Clear out old content of send buffer
     memset(m_sendBuffer, '\0', sizeof(m_sendBuffer));
@@ -158,11 +159,11 @@ bool TCP_Server::setTimeout(float sec, float usec, bool flag){
     }
     return true;
 }
-
+*/
 bool TCP_Server::handshake() {
-    sockaddr srcAddr;
+    sockaddr destAddr;
     socklen_t addrLen;
-    recv_data(srcAddr, addrLen);
+    recv_data(&destAddr, &addrLen);
 
     // print received data
     for (int i = 0; i < m_recvBuf.size(); i++) {
@@ -171,8 +172,11 @@ bool TCP_Server::handshake() {
     std::cout << std::endl;
 
     // return a message to client
-    char* serverMessage = "Message from server\n";
-    set_send_data(serverMessage, strlen(serverMessage));
+    std::string serverMessage = "Message from server\n";
+    add_send_data((uint8_t *) serverMessage.c_str(), serverMessage.length());
+    send_data(&destAddr, addrLen);
+
+    return true;
 }
 
 /*

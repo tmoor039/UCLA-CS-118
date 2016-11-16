@@ -20,10 +20,10 @@ clean:
 
 
 server:
-	$(CXX) -o $@ tcp_server.cpp $(CXXFLAGS) $@.cpp	
+	$(CXX) -o $@ tcp_server.cpp packet.cpp $(CXXFLAGS) $@.cpp	
 
 client:
-	$(CXX) -o $@ tcp_client.cpp $(CXXFLAGS) $@.cpp	
+	$(CXX) -o $@ tcp_client.cpp tcp_server.cpp packet.cpp $(CXXFLAGS) $@.cpp	
 
 server2:
 	$(CXX) -o $@ $(CLASSES) $(CXXFLAGS) tcp_server.cpp $@.cpp

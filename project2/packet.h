@@ -1,3 +1,6 @@
+#ifndef PACKET_H
+#define PACKET_H
+
 #include "globals.h"
 #include <sys/types.h>
 #include "stdint.h"
@@ -73,3 +76,5 @@ class TCP_Packet {
 
 };
 */
+
+#endif // PACKET_H

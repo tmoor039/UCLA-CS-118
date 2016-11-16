@@ -1,42 +1,51 @@
-#include "tcp.h"
 #include <stdlib.h>
-#include <string.h>
+#include "tcp.h"                                                                   
+#include <iostream>                                                                
+#include <stdlib.h>                                                                
+#include <sys/types.h>                                                             
+#include <sys/socket.h>                                                            
+#include <netdb.h>                                                                 
+#include "globals.h"                                                               
+#include <vector>                                                                  
+#include <unistd.h>                                                                
+#include <string.h> 
+#include "packet.h"
 
-using namespace std;
+//using namespace std;
 
-TCP_Client::TCP_Client(string serverHost, uint16_t port)
+TCP_Client::TCP_Client(std::string serverHost, uint16_t port)
     : TCP(port), m_serverHost(serverHost)
 {
-    struct addrinfo hints;                                                           
-    struct addrinfo *result, *rp;                                                    
-    memset(&hints, 0, sizeof(hints));                                                
-    hints.ai_family = AF_UNSPEC;                                                     
-    hints.ai_socktype = SOCK_DGRAM; // for UDP                                       
-    hints.ai_protocol = IPPROTO_UDP;                                                 
+    addrinfo hints;
+    addrinfo *result, *rp;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM; // for UDP
+    hints.ai_protocol = IPPROTO_UDP;
 
-    int ret = getaddrinfo(serverHost_.c_str(),                                       
-            std::to_string(port).c_str(), &hints, &result);                              
-    if (ret != 0) {                                                                  
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));                       
-    }                                                                                
-    int sfd;                                                                         
-    for (rp = result; rp != NULL; rp = rp->ai_next) {                                
-        sfd = socket(rp->ai_family, rp->ai_socktype,                                   
-                rp->ai_protocol);                                                          
-        if (sfd == -1)                                                                 
-            continue;                                                                    
-        ret = connect(sfd, rp->ai_addr, rp->ai_addrlen);                               
-        if (ret != -1) {                                                               
-            m_sockFD = sfd;                                                                  
-            m_destAddr = rp->ai_addr;                                                     
-            m_destAddrLen_ = rp->ai_addrlen;                                               
-            break;  // success                                                           
-        }                                                                              
-        close(sfd);                                                                    
-    }                                                                                
-    if (rp == NULL) {                                                                
-        fprintf(stderr, "Could not connect with socket address\n");                    
-    }                                                                                
+    int ret = getaddrinfo(m_serverHost.c_str(),
+            std::to_string(port).c_str(), &hints, &result);
+    if (ret != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));
+    }
+    int sfd;
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        sfd = socket(rp->ai_family, rp->ai_socktype,
+                rp->ai_protocol);
+        if (sfd == -1)
+            continue;
+        ret = connect(sfd, rp->ai_addr, rp->ai_addrlen);
+        if (ret != -1) {
+            m_sockFD = sfd;
+            m_destAddr = rp->ai_addr;
+            m_destAddrLen = rp->ai_addrlen;
+            break;  // success
+        }
+        close(sfd);
+    }
+    if (rp == NULL) {
+        fprintf(stderr, "Could not connect with socket address\n");
+    }
     freeaddrinfo(result);
     /*
     // Create a socket under UDP Protocol
@@ -62,10 +71,10 @@ TCP_Client::TCP_Client(string serverHost, uint16_t port)
      */
 }
 
-bool TCP_Client::send_data() {
+bool TCP_Client::send_data(sockaddr* destAddr /*=NULL*/, socklen_t addrLen/*=0*/) {
     int nPackets = m_sendBuf.size();
     for (int i = 0; i < nPackets; i++) {
-        len = write(m_sockFD, unpack(m_sendBuf.at(i)), PACKET_SIZE);
+        int len = write(m_sockFD, unpack(m_sendBuf.at(i)), PACKET_SIZE);
         if (len != PACKET_SIZE) {
             perror("TCP_Client sending error\n");
             return false;
@@ -74,57 +83,58 @@ bool TCP_Client::send_data() {
     return true;
 }
 
-bool TCP_Client::sendData(uint8_t* data){
-    // Clear out the send buffer
-    memset(m_sendBuffer, '\0', sizeof(m_sendBuffer));
-    // Copy the encoded data to the send buffer
-    copy(data, data + MSS, m_sendBuffer);
-    if(sendto(m_sockFD, m_sendBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, m_serverLen) == -1){
-        perror("Sending Error");
-        return false;
-    }
-    return true;
-}
-
-bool TCP_Client::receiveData(){
-    // Clear out the old content of the receive buffer
-    memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
-    if(recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, &m_serverLen) == -1){
-        perror("Receiving Error");
-        return false;
-    }
-    return true;
-}
-
-bool TCP_Client::setTimeout(float sec, float usec, bool flag){
-    struct timeval tv;
-    tv.tv_sec = sec;
-    tv.tv_usec = usec;
-    // If flag is 1 then send timeout else receive timeout
-    if(flag){
-        if(setsockopt(m_sockFD, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv)) < 0){
-            perror("Send Timeout Error");
-            return false;
-        }
-    } else {
-        if(setsockopt(m_sockFD, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv)) < 0){
-            perror("Receive Timeout Error");
-            return false;
-        }
-    }
-    return true;
-}
+//bool TCP_Client::sendData(uint8_t* data){
+//    // Clear out the send buffer
+//    memset(m_sendBuffer, '\0', sizeof(m_sendBuffer));
+//    // Copy the encoded data to the send buffer
+//    copy(data, data + MSS, m_sendBuffer);
+//    if(sendto(m_sockFD, m_sendBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, m_serverLen) == -1){
+//        perror("Sending Error");
+//        return false;
+//    }
+//    return true;
+//}
+//
+//bool TCP_Client::receiveData(){
+//    // Clear out the old content of the receive buffer
+//    memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
+//    if(recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, &m_serverLen) == -1){
+//        perror("Receiving Error");
+//        return false;
+//    }
+//    return true;
+//}
+//
+//bool TCP_Client::setTimeout(float sec, float usec, bool flag){
+//    struct timeval tv;
+//    tv.tv_sec = sec;
+//    tv.tv_usec = usec;
+//    // If flag is 1 then send timeout else receive timeout
+//    if(flag){
+//        if(setsockopt(m_sockFD, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv)) < 0){
+//            perror("Send Timeout Error");
+//            return false;
+//        }
+//    } else {
+//        if(setsockopt(m_sockFD, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv)) < 0){
+//            perror("Receive Timeout Error");
+//            return false;
+//        }
+//    }
+//    return true;
+//}
 
 bool TCP_Client::handshake() {
     std::cout << "Sending packet 0 SYN\n";
 
-    char* clientMessage = "Message from client\n";
+    std::string clientMessage = "Message from client\n";
     
-    add_send_data(clientMessage, strlen(clientMessage));
+    add_send_data((uint8_t *) clientMessage.c_str(), clientMessage.length());
     send_data();
 
     recv_data();
     std::cout << m_recvBuf.at(0).get_data() << std::endl;
+    return true;
 }
 
 /*bool TCP_Client::handshake(){
