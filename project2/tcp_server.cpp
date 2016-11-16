@@ -161,9 +161,9 @@ bool TCP_Server::setTimeout(float sec, float usec, bool flag){
 }
 */
 bool TCP_Server::handshake() {
-    sockaddr destAddr;
-    socklen_t addrLen;
-    recv_data(&destAddr, &addrLen);
+    sockaddr_storage destAddr;
+    socklen_t addrLen = sizeof(sockaddr_storage);
+    recv_data((sockaddr *) &destAddr, &addrLen);
 
     // print received data
     for (int i = 0; i < m_recvBuf.size(); i++) {
@@ -174,7 +174,7 @@ bool TCP_Server::handshake() {
     // return a message to client
     std::string serverMessage = "Message from server\n";
     add_send_data((uint8_t *) serverMessage.c_str(), serverMessage.length());
-    send_data(&destAddr, addrLen);
+    send_data((sockaddr *) &destAddr, addrLen);
 
     return true;
 }
