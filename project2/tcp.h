@@ -34,6 +34,7 @@ public:
         : m_port(port), m_destAddr(NULL), m_destAddrLen(0) {};
 
 	virtual ~TCP(){};
+
 	// Pure virtual methods
 	virtual bool handshake() = 0;
 	//virtual bool sendData(uint8_t* data) = 0;
