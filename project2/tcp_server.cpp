@@ -106,3 +106,30 @@ bool TCP_Server::handshake(){
 	// Delete packet or not?
 	return true;
 }
+
+bool TCP_Server::breakFile() {
+    std::FILE* fp = NULL;
+    fp = std::fopen(m_filename.c_str(), "r");
+    if (fp == NULL) {
+        std::perror("File failed to open\n");
+        return false;
+    }
+
+    int c;  // NOTE: int required to handle EOF.
+    uint8_t data[1024];
+    std::memset(data, '\0', sizeof(data));
+    int i = 0;
+    while ((c = std::fgetc(fp)) != EOF) {
+        if (i < 1024) {
+            data[i] = (uint8_t) c;
+            i++; 
+        }
+        else {
+            TCP_Packet packet(0, 0, 0, 0, 0, 0);
+            packet.setData(data);
+            m_filePackets.push_back(packet);
+            i = 0;
+        }
+    }
+    return true;
+}

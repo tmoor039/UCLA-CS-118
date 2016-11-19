@@ -42,6 +42,7 @@ class TCP_Server: TCP {
 	struct sockaddr_in m_serverInfo, m_clientInfo;
 	socklen_t m_cliLen = sizeof(m_clientInfo);
 	int m_sockFD;
+    std::vector<TCP_Packet> m_filePackets;
 
 public:
 	TCP_Server(uint16_t port);
@@ -52,14 +53,14 @@ public:
 	bool setTimeout(float sec, float usec, bool flag) override;
 
 	// Break file into chunks
-	// void breakFile(std::string filename);
+	void breakFile(std::string filename);
 
 	// Accessors
 	int getSocketFD() const { return m_sockFD; }
 	std::string getFilename() const { return m_filename; }
 
 	// Mutators
-	void setFilename(std::string filename) { m_filename = filename; }
+	bool setFilename(std::string filename) { m_filename = filename; }
 
 };
 
