@@ -44,6 +44,10 @@ class TCP_Server: TCP {
 	socklen_t m_cliLen = sizeof(m_clientInfo);
 	int m_sockFD;
     std::vector<TCP_Packet> m_filePackets;
+    uint16_t m_lastSeqNotAcked;
+    uint16_t m_nextSeq;
+    uint16_t m_window;
+    // starts at 1024
 
 public:
 	TCP_Server(uint16_t port);
@@ -53,8 +57,10 @@ public:
 	bool receiveData() override;
 	bool setTimeout(float sec, float usec, bool flag) override;
 
-	// Break file into chunks
 	bool breakFile();
+    // Break file into packets. The file packets are in m_filePackets.
+
+    void update_nextSeq();
 
 	// Accessors
 	int getSocketFD() const { return m_sockFD; }

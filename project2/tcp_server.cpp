@@ -30,6 +30,9 @@ TCP_Server::TCP_Server(uint16_t port)
 			m_status = false;
 		}
 	}
+
+    // other member variables
+    m_window = 1024;
 }
 
 bool TCP_Server::sendData(uint8_t* data) {
@@ -87,9 +90,9 @@ bool TCP_Server::handshake(){
 	setTimeout(0, RTO, 1);
 
 	// Send SYN-ACK
-	uint16_t newSeq = rand() % MAX_SEQ + 1;
-	fprintf(stdout, "Sending packet %d %d %d SYN\n", newSeq, PACKET_SIZE, SSTHRESH);
-	m_packet = new TCP_Packet(newSeq, seq + 1, PACKET_SIZE, 1, 1, 0);
+    m_nextSeq = rand() % MAX_SEQ + 1;
+	fprintf(stdout, "Sending packet %d %d %d SYN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+	m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 1, 1, 0);
 	sendData(m_packet->encode());
 
 	// Retransmit data if timeout
@@ -98,6 +101,8 @@ bool TCP_Server::handshake(){
 		sendData(m_packet->encode());
 	}
 	delete m_packet;
+
+    update_nextSeq();
 
 	// Receive ACK from client
 	m_packet = new TCP_Packet(m_recvBuffer);
@@ -125,11 +130,16 @@ bool TCP_Server::breakFile() {
             i++; 
         }
         else {
-            TCP_Packet packet(0, 0, 0, 0, 0, 0);
+            TCP_Packet packet(m_nextSeq, 0, 0, 0, 0, 0);
+            update_nextSeq();
             packet.setData(data);
             m_filePackets.push_back(packet);
             i = 0;
         }
     }
     return true;
+}
+
+void TCP_Server::update_nextSeq() {
+    m_nextSeq = (m_nextSeq++) % MAX_SEQ;
 }
