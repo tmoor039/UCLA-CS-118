@@ -52,7 +52,7 @@ class TCP_Server: TCP {
 
     // starts at 1024. The number of packets that can be pushed through the
     // socket simultaneously.
-    uint16_t m_cwnd;
+    uint16_t m_cwnd = PACKET_SIZE;
 
     // The sequence number of the first usable but not yet sent packet.
     uint16_t m_nextSeq;
