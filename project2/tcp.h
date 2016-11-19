@@ -44,18 +44,18 @@ class TCP_Server: TCP {
 	socklen_t m_cliLen = sizeof(m_clientInfo);
 	int m_sockFD;
     std::vector<TCP_Packet> m_filePackets;
-    uint16_t m_sendBase;
     // index for the oldest packet that has not yet been acked.
+    uint16_t m_sendBase;
 
-    int m_nextPacket;
     // index for the next packet within the window that is ready to be sent.
+    int m_nextPacket;
 
-    uint16_t m_cwnd;
     // starts at 1024. The number of packets that can be pushed through the
     // socket simultaneously.
+    uint16_t m_cwnd;
 
-    uint16_t m_nextSeq;
     // The sequence number of the first usable but not yet sent packet.
+    uint16_t m_nextSeq;
 
 public:
 	TCP_Server(uint16_t port);
@@ -65,14 +65,14 @@ public:
 	bool receiveData() override;
 	bool setTimeout(float sec, float usec, bool flag) override;
 
-	bool breakFile();
     // Break file into packets. The file packets are in m_filePackets.
+	bool breakFile();
 
-    bool send_next_packet();
     // send packet corresponding to m_nextSeq if it is within send window
+    bool sendNextPacket();
 
-    void send_file();
     // call break_file before using this function
+    void sendFile();
 
 	// Accessors
 	int getSocketFD() const { return m_sockFD; }

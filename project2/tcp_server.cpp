@@ -140,24 +140,18 @@ bool TCP_Server::breakFile() {
     return true;
 }
 
-bool TCP_Server::send_next_packet() {
+bool TCP_Server::sendNextPacket() {
     int nSent;
-    if (m_nextPacket > m_filePackets.size()) {
-        return false;
-    }
-    else if (m_nextPacket < m_sendBase + m_cwnd) {
+    if(m_nextPacket < m_sendBase + m_cwnd && m_nextPacket < m_filePackets.size()){
         nSent = sendto(m_sockFD, m_filePackets.at(m_nextPacket).encode(),
                     MSS, 0, (struct sockaddr*)&m_clientInfo, m_cliLen);
         m_filePackets.at(m_nextPacket).set_sent();
-    }
-    else {
-        return false;
-    }
-
-    return true;
+        return true;
+	}
+	return false;
 }
 
-void TCP_Server::send_file() {
+void TCP_Server::sendFile() {
     // TODO: manage window
 
     int nPackets = m_filePackets.size();
@@ -173,6 +167,6 @@ void TCP_Server::send_file() {
             }
         }
 
-        send_next_packet();
+        sendNextPacket();
     }
 }
