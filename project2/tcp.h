@@ -79,7 +79,7 @@ public:
 	std::string getFilename() const { return m_filename; }
 
 	// Mutators
-	bool setFilename(std::string filename) { m_filename = filename; }
+	void setFilename(std::string filename) { m_filename = filename; }
 
 };
 

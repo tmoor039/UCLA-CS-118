@@ -4,8 +4,7 @@ CXXOPTIMIZE= -O2
 CXXFLAGS= -g -Wall -pthread -std=c++11 $(CXXOPTIMIZE)
 CLASSES=packet.cpp
 
-all: server client server2 client2
-new: server2 client2
+all: server client 
 
 clean:
 	if [ -a server ] ; \
@@ -16,16 +15,10 @@ clean:
 	then \
 		rm client ; \
 	fi;
-	rm -rf *.o *~ *.gch *.swp *.dSYM client2 server2
-
+	rm -rf *.o *~ *.gch *.swp *.dSYM
 
 server:
-	$(CXX) -o $@ $(CLASSES) $(CXXFLAGS) $@.cpp	
+	$(CXX) -o $@ $(CLASSES) $(CXXFLAGS) tcp_server.cpp $@.cpp
 
 client:
-	$(CXX) -o $@ $(CLASSES) $(CXXFLAGS) $@.cpp	
-
-server2:
-	$(CXX) -o $@ $(CLASSES) $(CXXFLAGS) tcp_server.cpp $@.cpp
-client2:
 	$(CXX) -o $@ $(CLASSES) $(CXXFLAGS) tcp_client.cpp $@.cpp
