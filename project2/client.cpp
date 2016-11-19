@@ -31,6 +31,12 @@ int main(int argc, char* argv[]) {
 		fprintf(stderr, "TCP Handshake Failure\n");
 		exit(1);
 	}
+
+  if(!tcpClient.receiveFile()){
+    fprintf(stderr, "The client failed to receive the file.\n");
+    exit(1);
+  }
+
 	return 0;
 	
 }

@@ -96,6 +96,7 @@ public:
 	bool handshake() override;
 	bool sendData(uint8_t* data) override;
 	bool receiveData() override;
+  bool receiveFile();
 	bool setTimeout(float sec, float usec, bool flag) override;
 
 	// Accessors

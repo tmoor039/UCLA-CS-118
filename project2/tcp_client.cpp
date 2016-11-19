@@ -1,5 +1,6 @@
 #include "tcp.h"
 #include <stdlib.h>
+#include <fstream>
 
 using namespace std;
 
@@ -47,6 +48,13 @@ bool TCP_Client::receiveData(){
 		perror("Receiving Error");
 		return false;
 	}
+	return true;
+}
+
+bool TCP_Client::receiveFile(){
+  ofstream outputFile(RECEIVED_FILE_NAME);
+  outputFile << "This is a test";
+  outputFile.close();
 	return true;
 }
 
