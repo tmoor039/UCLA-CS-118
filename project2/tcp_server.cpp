@@ -32,7 +32,7 @@ TCP_Server::TCP_Server(uint16_t port)
 	}
 
     // other member variables
-    m_window = 1024;
+    m_cwnd = 1024;
 }
 
 bool TCP_Server::sendData(uint8_t* data) {
@@ -102,7 +102,7 @@ bool TCP_Server::handshake(){
 	}
 	delete m_packet;
 
-    update_nextSeq();
+    m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
 
 	// Receive ACK from client
 	m_packet = new TCP_Packet(m_recvBuffer);
@@ -130,16 +130,49 @@ bool TCP_Server::breakFile() {
             i++; 
         }
         else {
-            TCP_Packet packet(m_nextSeq, 0, 0, 0, 0, 0);
-            update_nextSeq();
+            TCP_Packet packet(m_nextSeq, 0, m_cwnd, 0, 0, 0);
             packet.setData(data);
             m_filePackets.push_back(packet);
+            m_nextSeq = (m_nextSeq + i) % MAX_SEQ;
             i = 0;
         }
     }
     return true;
 }
 
-void TCP_Server::update_nextSeq() {
-    m_nextSeq = (m_nextSeq++) % MAX_SEQ;
+bool TCP_Server::send_next_packet() {
+    int nSent;
+    if (m_nextPacket > m_filePackets.size()) {
+        return false;
+    }
+    else if (m_nextPacket < m_sendBase + m_cwnd) {
+        nSent = sendto(m_sockFD, m_filePackets.at(m_nextPacket).encode(),
+                    MSS, 0, (struct sockaddr*)&m_clientInfo, m_cliLen);
+        m_filePackets.at(m_nextPacket).set_sent();
+    }
+    else {
+        return false;
+    }
+
+    return true;
+}
+
+void TCP_Server::send_file() {
+    // TODO: manage window
+
+    int nPackets = m_filePackets.size();
+    while (m_nextPacket < nPackets) {
+        // wait for window to move forward
+        while (m_sendBase + m_cwnd < m_nextSeq) {
+            if (m_filePackets.at(m_sendBase).is_acked()) {
+                m_sendBase++;
+                break;
+            }
+            else {
+                continue;
+            }
+        }
+
+        send_next_packet();
+    }
 }

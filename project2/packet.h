@@ -31,6 +31,10 @@ class TCP_Packet {
 	} m_header;
 	uint8_t m_data[PACKET_SIZE] = {0};
 
+    // mark packet as sent and acked as necessary
+    bool m_sent;
+    bool m_acked;
+
 public:
 	// Single constructor with optional Data
 	TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win, bool f_ack, bool f_syn,
@@ -40,10 +44,13 @@ public:
 	// Accessors
 	uint8_t* getData() { return m_data; }
 	TCP_Header getHeader() { return m_header; }
+    bool is_acked() { return m_acked; }
+    bool is_sent() { return m_sent; }
 
 	uint8_t* encode();
 
 	// Mutators
 	bool setData(uint8_t* data);
-
+    void set_acked() { m_acked = true; }
+    void set_sent() { m_sent = true; }
 };

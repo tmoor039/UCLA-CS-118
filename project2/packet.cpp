@@ -13,6 +13,8 @@ TCP_Packet::TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win, bool f_ack,
 			m_data[i] = data[i];
 		}
 	}
+    m_acked = false;
+    m_sent = false;
 }
 
 // Grab the first 8 bytes and decode them into the header
