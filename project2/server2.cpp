@@ -34,5 +34,7 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
+    tcpServer.breakFile();
+
 	return 0;
 }

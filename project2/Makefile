@@ -2,7 +2,7 @@
 CXX=g++
 CXXOPTIMIZE= -O2
 CXXFLAGS= -g -Wall -pthread -std=c++11 $(CXXOPTIMIZE)
-CLASSES=packet.cpp Udp.cpp
+CLASSES=packet.cpp
 
 all: server client server2 client2
 new: server2 client2

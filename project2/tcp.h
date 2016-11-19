@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <vector>
 
 // Abstract base TCP class
 class TCP {
@@ -53,7 +54,7 @@ public:
 	bool setTimeout(float sec, float usec, bool flag) override;
 
 	// Break file into chunks
-	void breakFile(std::string filename);
+	bool breakFile();
 
 	// Accessors
 	int getSocketFD() const { return m_sockFD; }
