@@ -37,6 +37,9 @@ class TCP_Packet {
     bool m_sent;
     bool m_acked;
 
+    int m_length;
+    // length of data;
+
 public:
 	// Single constructor with optional Data
 	TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win, bool f_ack, bool f_syn,
@@ -48,13 +51,15 @@ public:
 	// Accessors
 	uint8_t* getData() { return m_data; }
 	TCP_Header getHeader() { return m_header; }
-    bool is_acked() { return m_acked; }
-    bool is_sent() { return m_sent; }
+    bool isAcked() { return m_acked; }
+    bool isSent() { return m_sent; }
+    int get_length() { return m_length; }
 
 	uint8_t* encode();
 
 	// Mutators
 	bool setData(char* data);
-    void set_acked() { m_acked = true; }
-    void set_sent() { m_sent = true; }
+    void setAcked() { m_acked = true; }
+    void setSent() { m_sent = true; }
+    void setLength(int len) { m_length = len; }
 };

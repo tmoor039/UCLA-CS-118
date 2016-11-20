@@ -57,35 +57,35 @@ bool TCP_Client::receiveData(){
 }
 
 bool TCP_Client::receiveFile(){
-  // Open a new file
-  ofstream outputFile(RECEIVED_FILE_NAME);
-  
-  // TODO: Create data buffer
+    // Open a new file
+    ofstream outputFile(RECEIVED_FILE_NAME);
 
-  // Receive the file
-  int nPackets = 0;
-  while(nPackets < 3144){
-    if(receiveData()){
-      // Parse packet data
-	    m_packet = new TCP_Packet(m_recvBuffer);
-	    uint16_t ack = m_packet->getHeader().fields[ACK];
-	    uint16_t seq = m_packet->getHeader().fields[SEQ];
-      uint8_t* data = m_packet->getData();
-      for(int i = 0; i < m_recvSize; i++){
-        outputFile << data[i];
-      }
-	    fprintf(stdout, "Receiving packet %hu\n", seq);
-	    delete m_packet;
-      // TODO: Deal with buffered data
-	    // Send the ACK
-	    fprintf(stdout, "Sending packet %d\n", seq + m_recvSize - HEADER_SIZE);
-	    m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 0);
-	    sendData(m_packet->encode());
-      nPackets++;
+    // TODO: Create data buffer
+
+    // Receive the file
+    int nPackets = 0;
+    while(nPackets < 3144){
+        if(receiveData()){
+            // Parse packet data
+            m_packet = new TCP_Packet(m_recvBuffer);
+            uint16_t ack = m_packet->getHeader().fields[ACK];
+            uint16_t seq = m_packet->getHeader().fields[SEQ];
+            uint8_t* data = m_packet->getData();
+            for(int i = 0; i < m_recvSize; i++){
+                outputFile << data[i];
+            }
+            fprintf(stdout, "Receiving packet %hu\n", seq);
+            delete m_packet;
+            // TODO: Deal with buffered data
+            // Send the ACK
+            fprintf(stdout, "Sending packet %d\n", seq + m_recvSize - HEADER_SIZE);
+            m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 0);
+            sendData(m_packet->encode());
+            nPackets++;
+        }
     }
-  }
-  outputFile.close();
-	return true;
+    outputFile.close();
+    return true;
 }
 
 bool TCP_Client::setTimeout(float sec, float usec, bool flag){

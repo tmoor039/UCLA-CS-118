@@ -46,17 +46,22 @@ class TCP_Server: TCP {
 	int m_sockFD;
     std::vector<TCP_Packet> m_filePackets;
     // index for the oldest packet that has not yet been acked.
-    uint16_t m_sendBase;
+    uint16_t m_basePacket;
 
     // index for the next packet within the window that is ready to be sent.
     int m_nextPacket;
 
-    // starts at 1024. The number of packets that can be pushed through the
-    // socket simultaneously.
-    uint16_t m_cwnd = PACKET_SIZE;
+    // in units of PACKET_SIZE
+    uint16_t m_cwnd;
 
-    // The sequence number of the first usable but not yet sent packet.
     uint16_t m_nextSeq;
+    // The sequence number of the first usable but not yet sent packet.
+
+    uint16_t m_baseSeq;
+    // The sequence number of the first packet sent but not yet acked.
+
+    ssize_t m_bytes;
+    // The size of the file
 
 public:
 	TCP_Server(uint16_t port);
@@ -82,6 +87,15 @@ public:
 	// Mutators
 	void setFilename(std::string filename) { m_filename = filename; }
 
+    int seq2index(uint16_t seq);
+    // returns index of the file packets based on sequence number
+
+    uint16_t index2seq(int index);
+    // returns sequence number based on index of file packets
+
+    uint16_t receiveAck();
+    // Blocks until an ack is received. Marks the corresponding file packet
+    // as marked and returns the ack.
 };
 
 // TCP Client
