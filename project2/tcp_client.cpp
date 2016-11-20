@@ -1,6 +1,8 @@
 #include "tcp.h"
 #include <stdlib.h>
 #include <fstream>
+#include <vector>
+#include <utility>
 
 using namespace std;
 
@@ -44,7 +46,8 @@ bool TCP_Client::sendData(uint8_t* data){
 bool TCP_Client::receiveData(){
 	// Clear out the old content of the receive buffer
 	memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
-	if(recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, &m_serverLen) == -1){
+	m_recvSize = recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, &m_serverLen);
+  if(m_recvSize == -1){
 		perror("Receiving Error");
 		return false;
 	}
@@ -52,8 +55,31 @@ bool TCP_Client::receiveData(){
 }
 
 bool TCP_Client::receiveFile(){
+  // Open a new file
   ofstream outputFile(RECEIVED_FILE_NAME);
-  outputFile << "This is a test";
+  
+  // TODO: Create data buffer
+
+  // Receive the file
+  while(1){
+    if(receiveData()){
+      // Parse packet data
+	    m_packet = new TCP_Packet(m_recvBuffer);
+	    uint16_t ack = m_packet->getHeader().fields[ACK];
+	    uint16_t seq = m_packet->getHeader().fields[SEQ];
+      uint8_t* data = m_packet->getData();
+      for(int i = 0; i < m_recvSize - HEADER_SIZE; i++){
+        outputFile << data[m_recvSize + HEADER_SIZE];
+      }
+	    fprintf(stdout, "Receiving packet %hu\n", seq);
+	    delete m_packet;
+      // TODO: Deal with buffered data
+	    // Send the ACK
+	    fprintf(stdout, "Sending packet %d\n", seq + m_recvSize - HEADER_SIZE);
+	    m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 0);
+	    sendData(m_packet->encode());
+    }
+  }
   outputFile.close();
 	return true;
 }

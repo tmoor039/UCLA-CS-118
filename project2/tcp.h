@@ -16,6 +16,7 @@ protected:
 	uint8_t m_recvBuffer[MSS];
 	uint8_t m_sendBuffer[MSS];
 	bool m_status = true;
+  int m_recvSize;
 
 public:
 	TCP(uint16_t port): m_port(port) {};
