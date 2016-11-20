@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <utility>
+#include <time.h>
 
 using namespace std;
 
@@ -47,7 +48,7 @@ bool TCP_Client::receiveData(){
 	// Clear out the old content of the receive buffer
 	memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
 	m_recvSize = recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, &m_serverLen);
-  if(m_recvSize == -1){
+    if(m_recvSize == -1){
 		perror("Receiving Error");
 		return false;
 	}
@@ -109,6 +110,7 @@ bool TCP_Client::handshake(){
 	// Set Sending timeout
 	setTimeout(0, RTO, 1);
 
+    srand(time(NULL));
 	m_packet = new TCP_Packet(rand()% MSS + 1, 0, PACKET_SIZE, 0, 1, 0);
 	sendData(m_packet->encode());
 

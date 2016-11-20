@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
+#include <time.h>
 
 using namespace std;
 
@@ -88,6 +89,7 @@ bool TCP_Server::handshake(){
 	setTimeout(0, RTO, 1);
 
 	// Send SYN-ACK
+    srand(time(NULL));
     m_nextSeq = rand() % MAX_SEQ + 1;
 	fprintf(stdout, "Sending packet %d %d %d SYN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
 	m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 1, 1, 0);
