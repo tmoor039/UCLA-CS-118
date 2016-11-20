@@ -108,6 +108,7 @@ bool TCP_Server::handshake(){
 	m_packet = new TCP_Packet(m_recvBuffer);
 	ack = m_packet->getHeader().fields[ACK];
 	fprintf(stdout, "Receiving packet %hu\n", ack);
+  delete m_packet;
 	// Delete packet or not?
 	return true;
 }
@@ -117,68 +118,88 @@ bool TCP_Server::breakFile() {
 	if(!file || !file.is_open()){
         perror("File failed to open\n");
         return false;
-    }
-	// Get length of file
-	file.seekg(0, file.end);
-	ssize_t length = file.tellg();
-	file.seekg(0, file.beg);
-    // Create temp buffer to hold PACKET_SIZE bytes
-    char data[PACKET_SIZE];
-    // Clear out data
+  }
+  // Get length of file
+  file.seekg(0, file.end);
+  ssize_t length = file.tellg();
+  file.seekg(0, file.beg);
+  // Create temp buffer to hold PACKET_SIZE bytes
+  char data[PACKET_SIZE];
+  // Clear out data
+  memset(data, '\0', sizeof(data));
+  int num_chunks = length/PACKET_SIZE;
+  for(ssize_t i = 0; i < num_chunks; i++){
+    // Read PACKET_SIZE bytes
+    file.read(data, PACKET_SIZE);
+    // Create a TCP_Packet from this data
+    TCP_Packet packet(m_nextSeq, 0, m_cwnd, 0, 0, 0);
+    packet.setData(data);
+    // Store packets
+    m_filePackets.push_back(packet);
+    // Increment Sequence Number
+    m_nextSeq = (m_nextSeq + PACKET_SIZE) % MAX_SEQ;
+  }
+  // Check if there are still some bytes left in the file
+  ssize_t remaining = 0;
+  if((remaining = length % PACKET_SIZE) != 0){
+    // Clear out data	
     memset(data, '\0', sizeof(data));
-    int num_chunks = length/PACKET_SIZE;
-    for(ssize_t i = 0; i < num_chunks; i++){
-    	// Read PACKET_SIZE bytes
-    	file.read(data, PACKET_SIZE);
-    	// Create a TCP_Packet from this data
-    	TCP_Packet packet(m_nextSeq, 0, m_cwnd, 0, 0, 0);
-    	packet.setData(data);
-    	// Store packets
-    	m_filePackets.push_back(packet);
-    	// Increment Sequence Number
-        m_nextSeq = (m_nextSeq + PACKET_SIZE) % MAX_SEQ;
-	}
-	// Check if there are still some bytes left in the file
-	ssize_t remaining = 0;
-	if((remaining = length % PACKET_SIZE) != 0){
-    	// Clear out data	
-    	memset(data, '\0', sizeof(data));
-    	// Read remaining bytes and store and forward sequence number
-    	file.read(data, remaining);
-    	TCP_Packet packet(m_nextSeq, 0, m_cwnd, 0, 0, 0);
-    	packet.setData(data);
-    	m_filePackets.push_back(packet);
-    	m_nextSeq = (m_nextSeq + remaining) % MAX_SEQ;
-	}
-	return true;
+    // Read remaining bytes and store and forward sequence number
+    file.read(data, remaining);
+    TCP_Packet packet(m_nextSeq, 0, m_cwnd, 0, 0, 0);
+    packet.setData(data);
+    m_filePackets.push_back(packet);
+    m_nextSeq = (m_nextSeq + remaining) % MAX_SEQ;
+  }
+  return true;
 }
 
 bool TCP_Server::sendNextPacket() {
-    int nSent;
-    if(m_nextPacket < m_sendBase + m_cwnd && m_nextPacket < m_filePackets.size()){
-        nSent = sendto(m_sockFD, m_filePackets.at(m_nextPacket).encode(),
-                    MSS, 0, (struct sockaddr*)&m_clientInfo, m_cliLen);
-        m_filePackets.at(m_nextPacket).set_sent();
-        return true;
-	}
-	return false;
+  int nSent;
+  if(m_nextPacket < m_sendBase + m_cwnd && m_nextPacket < m_filePackets.size()){
+    nSent = sendto(m_sockFD, m_filePackets.at(m_nextPacket).encode(),
+        MSS, 0, (struct sockaddr*)&m_clientInfo, m_cliLen);
+    m_filePackets.at(m_nextPacket).set_sent();
+    return true;
+  }
+  return false;
 }
 
 void TCP_Server::sendFile() {
-    // TODO: manage window
-    int nPackets = m_filePackets.size();
-    while (m_nextPacket < nPackets) {
-        // wait for window to move forward
-        while (m_sendBase + m_cwnd < m_nextSeq) {
-            if (m_filePackets.at(m_sendBase).is_acked()) {
-                m_sendBase++;
-                break;
-            }
-            else {
-                continue;
-            }
-        }
-
-        sendNextPacket();
+  // TODO: manage window
+  int nPackets = m_filePackets.size();
+  int currentPacket = 0;
+  fprintf(stdout, "NUMBER OF PACKETS: %d\n", nPackets);
+  fprintf(stdout, "Sending packet %d\n", currentPacket);
+  sendData(m_filePackets[currentPacket].encode());
+  while(currentPacket < nPackets - 1){
+    if(receiveData()){
+      currentPacket++;
+      fprintf(stdout, "Sending packet %d\n", currentPacket);
+      sendData(m_filePackets[currentPacket].encode());
+    } else {
+      fprintf(stdout, "Sending packet %d\n", currentPacket);
+      sendData(m_filePackets[currentPacket].encode());
     }
+  }
+  /*while (m_nextPacket < nPackets) {
+  // wait for window to move forward
+  while (m_sendBase + m_cwnd < m_nextSeq) {
+  if (m_filePackets.at(m_sendBase).is_acked()) {
+  m_sendBase++;
+  break;
+  }
+  else {
+  continue;
+  }
+  }
+
+  sendNextPacket();
+
+  // Clear out the old content of the receive buffer
+  while(!receiveData()){
+  sendNextPacket();
+  }
+  m_nextPacket++;
+  }*/
 }

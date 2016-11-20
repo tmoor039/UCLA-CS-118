@@ -34,7 +34,12 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
-    tcpServer.breakFile();
+  // For testing - REMOVE
+  fprintf(stdout, "END OF HANDSHAKE\n");
+
+  tcpServer.breakFile();
+
+  tcpServer.sendFile();
 
 	return 0;
 }
