@@ -7,6 +7,7 @@ class TCP_Packet {
 		uint16_t fields[NUM_FIELDS] = {0};
 		// Set Flags with the three LSB's holding the information
 		void setFlags(bool A, bool S, bool F) { fields[FLAGS] |= F | (S << 1) | (A << 2); }
+		void setCWND(uint16_t cwnd) { fields[WIN] = cwnd; }
 		bool encode(uint8_t* enc) {
 			// Break 2 byte values by high and low byte fields
 			if(enc){
