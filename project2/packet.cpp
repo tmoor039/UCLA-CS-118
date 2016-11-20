@@ -41,10 +41,10 @@ uint8_t* TCP_Packet::encode(){
 }
 
 // Shallow copy the data into the member data
-bool TCP_Packet::setData(uint8_t* data){
+bool TCP_Packet::setData(char* data){
 	if(data){
 		for(ssize_t i = 0; i < PACKET_SIZE; i++){
-			m_data[i] = data[i];
+			m_data[i] = (uint8_t) data[i];
 		}
 		return true;
 	}

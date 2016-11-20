@@ -1,5 +1,6 @@
 #include "tcp.h"
 #include <iostream>
+#include <fstream>
 #include <stdlib.h>
 
 using namespace std;
@@ -30,9 +31,6 @@ TCP_Server::TCP_Server(uint16_t port)
 			m_status = false;
 		}
 	}
-
-    // other member variables
-    m_cwnd = 1024;
 }
 
 bool TCP_Server::sendData(uint8_t* data) {
@@ -113,31 +111,44 @@ bool TCP_Server::handshake(){
 }
 
 bool TCP_Server::breakFile() {
-    std::FILE* fp = NULL;
-    fp = std::fopen(m_filename.c_str(), "r");
-    if (fp == NULL) {
-        std::perror("File failed to open\n");
+	ifstream file(m_filename.c_str(), ios::in | ios::binary);
+	if(!file || !file.is_open()){
+        perror("File failed to open\n");
         return false;
     }
-
-    int c;  // NOTE: int required to handle EOF.
-    uint8_t data[1024];
-    std::memset(data, '\0', sizeof(data));
-    int i = 0;
-    while ((c = std::fgetc(fp)) != EOF) {
-        if (i < 1024) {
-            data[i] = (uint8_t) c;
-            i++; 
-        }
-        else {
-            TCP_Packet packet(m_nextSeq, 0, m_cwnd, 0, 0, 0);
-            packet.setData(data);
-            m_filePackets.push_back(packet);
-            m_nextSeq = (m_nextSeq + i) % MAX_SEQ;
-            i = 0;
-        }
-    }
-    return true;
+	// Get length of file
+	file.seekg(0, file.end);
+	ssize_t length = file.tellg();
+	file.seekg(0, file.beg);
+    // Create temp buffer to hold PACKET_SIZE bytes
+    char data[PACKET_SIZE];
+    // Clear out data
+    memset(data, '\0', sizeof(data));
+    int num_chunks = length/PACKET_SIZE;
+    for(ssize_t i = 0; i < num_chunks; i++){
+    	// Read PACKET_SIZE bytes
+    	file.read(data, PACKET_SIZE);
+    	// Create a TCP_Packet from this data
+    	TCP_Packet packet(m_nextSeq, 0, m_cwnd, 0, 0, 0);
+    	packet.setData(data);
+    	// Store packets
+    	m_filePackets.push_back(packet);
+    	// Increment Sequence Number
+        m_nextSeq = (m_nextSeq + PACKET_SIZE) % MAX_SEQ;
+	}
+	// Check if there are still some bytes left in the file
+	ssize_t remaining = 0;
+	if((remaining = length % PACKET_SIZE) != 0){
+    	// Clear out data	
+    	memset(data, '\0', sizeof(data));
+    	// Read remaining bytes and store and forward sequence number
+    	file.read(data, remaining);
+    	TCP_Packet packet(m_nextSeq, 0, m_cwnd, 0, 0, 0);
+    	packet.setData(data);
+    	m_filePackets.push_back(packet);
+    	m_nextSeq = (m_nextSeq + remaining) % MAX_SEQ;
+	}
+	return true;
 }
 
 bool TCP_Server::sendNextPacket() {
@@ -153,7 +164,6 @@ bool TCP_Server::sendNextPacket() {
 
 void TCP_Server::sendFile() {
     // TODO: manage window
-
     int nPackets = m_filePackets.size();
     while (m_nextPacket < nPackets) {
         // wait for window to move forward

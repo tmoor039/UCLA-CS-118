@@ -50,7 +50,7 @@ public:
 	uint8_t* encode();
 
 	// Mutators
-	bool setData(uint8_t* data);
+	bool setData(char* data);
     void set_acked() { m_acked = true; }
     void set_sent() { m_sent = true; }
 };
