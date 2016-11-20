@@ -1,4 +1,5 @@
 #include "tcp.h"
+#include <iostream>
 #include <stdlib.h>
 #include <fstream>
 #include <vector>
@@ -61,15 +62,16 @@ bool TCP_Client::receiveFile(){
   // TODO: Create data buffer
 
   // Receive the file
-  while(1){
+  int nPackets = 0;
+  while(nPackets < 3144){
     if(receiveData()){
       // Parse packet data
 	    m_packet = new TCP_Packet(m_recvBuffer);
 	    uint16_t ack = m_packet->getHeader().fields[ACK];
 	    uint16_t seq = m_packet->getHeader().fields[SEQ];
       uint8_t* data = m_packet->getData();
-      for(int i = 0; i < m_recvSize - HEADER_SIZE; i++){
-        outputFile << data[m_recvSize + HEADER_SIZE];
+      for(int i = 0; i < m_recvSize; i++){
+        outputFile << data[i];
       }
 	    fprintf(stdout, "Receiving packet %hu\n", seq);
 	    delete m_packet;
@@ -78,6 +80,7 @@ bool TCP_Client::receiveFile(){
 	    fprintf(stdout, "Sending packet %d\n", seq + m_recvSize - HEADER_SIZE);
 	    m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 0);
 	    sendData(m_packet->encode());
+      nPackets++;
     }
   }
   outputFile.close();
@@ -131,16 +134,16 @@ bool TCP_Client::handshake(){
 	sendData(m_packet->encode());
 
 	// Retransmit in case of a timeout
-	while(!receiveData()){
+	/*while(!receiveData()){
 		fprintf(stdout, "Sending packet %d Retransmission\n", seq+1);
 		sendData(m_packet->encode());
 	}
-	delete m_packet;
+	delete m_packet;*/
 
 	// Receive the data from the server and begin normal retrieval
-	m_packet = new TCP_Packet(m_recvBuffer);
+	/*m_packet = new TCP_Packet(m_recvBuffer);
 	seq = m_packet->getHeader().fields[SEQ];
-	fprintf(stdout, "Receiving packet %hu\n", seq);
+	fprintf(stdout, "Receiving packet %hu\n", seq);*/
 	// Delete packet here or nah?
 	return true;
 }

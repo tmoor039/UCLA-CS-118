@@ -24,20 +24,26 @@ TCP_Packet::TCP_Packet(uint8_t* enc_stream){
 		m_header.decode(enc_stream);
 	}
 	for(ssize_t i = 2*NUM_FIELDS; i < MSS; i++){
-		m_data[i] = enc_stream[i];
+		m_data[i - (2*NUM_FIELDS)] = enc_stream[i];
 	}
+}
+
+TCP_Packet::~TCP_Packet(){
+  if(m_encoded_packet){
+    delete m_encoded_packet;
+  }
 }
 
 // Encode into byte array
 uint8_t* TCP_Packet::encode(){
-	uint8_t* encoded_packet = new uint8_t[MSS];
+	uint8_t* m_encoded_packet = new uint8_t[MSS];
 	// Header encoding - nullptr returned on error
-	if(!m_header.encode(encoded_packet)) { return nullptr; }
+	if(!m_header.encode(m_encoded_packet)) { return nullptr; }
 	// The first 8 bytes have been encoded, encode the data
 	for(ssize_t i = 2*NUM_FIELDS; i < MSS; i++){
-		encoded_packet[i] = m_data[i];
+		m_encoded_packet[i] = m_data[i-(2*NUM_FIELDS)];
 	}
-	return encoded_packet;
+	return m_encoded_packet;
 }
 
 // Shallow copy the data into the member data

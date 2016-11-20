@@ -32,6 +32,9 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
+  // For testing - REMOVE
+  fprintf(stdout, "END OF HANDSHAKE\n");
+  
   if(!tcpClient.receiveFile()){
     fprintf(stderr, "The client failed to receive the file.\n");
     exit(1);

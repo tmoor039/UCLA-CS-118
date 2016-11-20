@@ -31,6 +31,7 @@ class TCP_Packet {
 
 	} m_header;
 	uint8_t m_data[PACKET_SIZE] = {0};
+  uint8_t* m_encoded_packet = nullptr;
 
     // mark packet as sent and acked as necessary
     bool m_sent;
@@ -42,6 +43,8 @@ public:
 			bool f_fin, uint8_t* data = nullptr);
 	// Constructor that decodes data stream into TCP Packet
 	TCP_Packet(uint8_t* enc_stream);
+  // Destructor to remove any heap allocated objects
+  ~TCP_Packet();
 	// Accessors
 	uint8_t* getData() { return m_data; }
 	TCP_Header getHeader() { return m_header; }
