@@ -195,12 +195,17 @@ void TCP_Server::sendFile() {
         }
     }
 */
+    uint16_t ack;
     std::cout << "nPackets: " << nPackets << std::endl;
     while (m_basePacket < nPackets) {
-        // wait for window to move forward
         if (m_basePacket + (m_cwnd - 1) < m_nextPacket)  {
-            fprintf(stdout, "Receiving packet\n");
-            receiveAck();
+
+            // wait for window to move forward
+            while (!receiveData()) {
+                continue;
+            }
+            ack = receiveAck();
+            fprintf(stdout, "Receiving packet %d\n", ack);
             if (m_filePackets.at(m_basePacket).isAcked()) {
                 // move window forward
                 m_basePacket++;
@@ -215,8 +220,10 @@ void TCP_Server::sendFile() {
             fprintf(stderr, "send error\n");
         };
 
-        fprintf(stdout, "Receiving packet\n");
-        receiveAck();
+        if (receiveData()) {
+            ack = receiveAck();
+            fprintf(stdout, "Receiving packet %d\n", ack);
+        }
         if (m_filePackets.at(m_basePacket).isAcked()) {
             // move window forward
             m_basePacket++;
@@ -234,12 +241,6 @@ void TCP_Server::sendFile() {
 }
 
 uint16_t TCP_Server::receiveAck() {
-    // wait for ack
-    while (!receiveData()) {
-        continue;
-    }
-
-    // received ack
     TCP_Packet* ackPacket = new TCP_Packet(m_recvBuffer);
     uint16_t ack = ackPacket->getHeader().fields[ACK];
     delete ackPacket;
