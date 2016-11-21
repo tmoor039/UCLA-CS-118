@@ -95,6 +95,7 @@ bool TCP_Server::handshake(){
     // Send SYN-ACK
     srand(time(NULL));
     m_nextSeq = rand() % MAX_SEQ + 1;
+    m_baseSeq = m_nextSeq;
     fprintf(stdout, "Sending packet %d %d %d SYN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
     m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 1, 1, 0);
     sendData(m_packet->encode());
@@ -125,7 +126,8 @@ bool TCP_Server::breakFile() {
     }
     // Get length of file
     file.seekg(0, file.end);
-    m_bytes = file.tellg();
+    ssize_t length = file.tellg();
+    m_bytes = length; 
     file.seekg(0, file.beg);
     // Create temp buffer to hold PACKET_SIZE bytes
     char data[PACKET_SIZE];
@@ -193,29 +195,40 @@ void TCP_Server::sendFile() {
         }
     }
 */
+    std::cout << "nPackets: " << nPackets << std::endl;
     while (m_basePacket < nPackets) {
+        // wait for window to move forward
+        if (m_basePacket + (m_cwnd - 1) < m_nextPacket)  {
+            fprintf(stdout, "Receiving packet\n");
+            receiveAck();
+            if (m_filePackets.at(m_basePacket).isAcked()) {
+                // move window forward
+                m_basePacket++;
+                m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+            }
+            continue;
+        }
+
+        fprintf(stdout, "Sending packet %d\n", 
+                    m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
+        if (sendNextPacket() == false) {
+            fprintf(stderr, "send error\n");
+        };
+
+        fprintf(stdout, "Receiving packet\n");
+        receiveAck();
         if (m_filePackets.at(m_basePacket).isAcked()) {
             // move window forward
             m_basePacket++;
             m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
         }
 
-        // wait for window to move forward
-        if (m_basePacket + (m_cwnd - 1) > m_nextPacket)  {
-            fprintf(stdout, "Receiving packet\n");
-            receiveAck();
-            continue;
-        }
-
-        fprintf(stdout, "Sending packet %d\n", m_nextSeq);
-        sendNextPacket();
-
-        fprintf(stdout, "Receiving packet\n");
-        receiveAck();
-
-        if (m_nextPacket < nPackets) {
+        if (m_nextPacket < nPackets - 1) {
             m_nextPacket++;
-            m_nextSeq = (m_nextSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+        }
+        else if (m_nextPacket == nPackets - 1) {
+            m_nextPacket++;
+            int lastPacketSize = m_bytes % PACKET_DATA_SIZE;
         }
     }
 }
