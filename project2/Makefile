@@ -7,15 +7,7 @@ CLASSES=packet.cpp
 all: server client 
 
 clean:
-	if [ -a server ] ; \
-	then \
-		rm server ; \
-	fi;
-	if [ -a client ] ; \
-	then \
-		rm client ; \
-	fi;
-	rm -rf *.o *~ *.gch *.swp *.dSYM
+	rm -rf *.o *~ *.gch *.swp *.dSYM server client
 
 server:
 	$(CXX) -o $@ $(CLASSES) $(CXXFLAGS) tcp_server.cpp $@.cpp
