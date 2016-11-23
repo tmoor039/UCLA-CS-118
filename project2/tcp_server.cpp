@@ -166,6 +166,7 @@ bool TCP_Server::sendNextPacket() {
         return false;
     }
     else if(m_nextPacket < m_basePacket + m_cwnd && m_nextPacket < m_filePackets.size()){
+        // next packet is within window and does not exceed the file
         nSent = sendto(m_sockFD, m_filePackets.at(m_nextPacket).encode(),
                 MSS, 0, (struct sockaddr*)&m_clientInfo, m_cliLen);
         m_filePackets.at(m_nextPacket).setSent();
@@ -175,7 +176,7 @@ bool TCP_Server::sendNextPacket() {
     return false;
 }
 
-void TCP_Server::sendFile() {
+bool TCP_Server::sendFile() {
     // TODO: manage window
     
     int nPackets = m_filePackets.size();
@@ -198,14 +199,19 @@ void TCP_Server::sendFile() {
     uint16_t ack;
     std::cout << "nPackets: " << nPackets << std::endl;
     while (m_basePacket < nPackets) {
-        if (m_basePacket + (m_cwnd - 1) < m_nextPacket)  {
-
-            // wait for window to move forward
+        //std::cout << "base packet: " << m_basePacket << std::endl;
+        //std::cout << "next packet: " << m_nextPacket << std::endl;    
+        // if next packet is not within window, wait for window to shift right
+        if (m_nextPacket >= m_basePacket + m_cwnd) {
+            std::cout << "waiting for window to shift\n";
+            // wait to receive acknowledgement
             while (!receiveData()) {
                 continue;
             }
             ack = receiveAck();
             fprintf(stdout, "Receiving packet %d\n", ack);
+
+            // if first packet in window is acked
             if (m_filePackets.at(m_basePacket).isAcked()) {
                 // move window forward
                 m_basePacket++;
@@ -214,29 +220,52 @@ void TCP_Server::sendFile() {
             continue;
         }
 
-        fprintf(stdout, "Sending packet %d\n", 
-                    m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
-        if (sendNextPacket() == false) {
-            fprintf(stderr, "send error\n");
-        };
+        // repeatedly send next packet until we hit the end of window.
+        while (m_nextPacket < m_basePacket + m_cwnd) {
+            fprintf(stdout, "Sending packet %d\n", 
+                        m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
+            bool sent = sendNextPacket();
+            if (!sent) {
+                fprintf(stderr, "send error\n");
+                return false;
+            }
+            else {
+                m_nextPacket++;
+            }
+        }
 
         if (receiveData()) {
             ack = receiveAck();
             fprintf(stdout, "Receiving packet %d\n", ack);
         }
+
+        // if base packet is acked, move window forward
         if (m_filePackets.at(m_basePacket).isAcked()) {
-            // move window forward
             m_basePacket++;
             m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
         }
 
-        if (m_nextPacket < nPackets - 1) {
-            m_nextPacket++;
+        /*
+        // Receive all ack packets
+        while (receiveData()) {
+            ack = receiveAck();
+            fprintf(stdout, "Receiving packet %d\n", ack);
+
+            // if base packet is acked, move window forward
+            if (m_filePackets.at(m_basePacket).isAcked()) {
+                m_basePacket++;
+                m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+            }
         }
-        else if (m_nextPacket == nPackets - 1) {
-            m_nextPacket++;
-            int lastPacketSize = m_bytes % PACKET_DATA_SIZE;
-        }
+        std::cout << "done receiving acks\n";
+        */
+
+        // advance next packet
+        m_nextPacket++;
+            
+        // TODO: how to send the last packet
+        //m_nextPacket++;
+        //int lastPacketSize = m_bytes % PACKET_DATA_SIZE;
     }
 
     // TODO: Change timeout
@@ -282,6 +311,8 @@ void TCP_Server::sendFile() {
         fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
         sendData(m_packet->encode());
     }
+
+    return true;
 }
 
 uint16_t TCP_Server::receiveAck() {

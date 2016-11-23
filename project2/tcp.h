@@ -54,14 +54,14 @@ class TCP_Server: TCP {
     // in units of PACKET_SIZE
     uint16_t m_cwnd;
 
-    uint16_t m_nextSeq;
     // The sequence number of the first usable but not yet sent packet.
+    uint16_t m_nextSeq;
 
-    uint16_t m_baseSeq;
     // The sequence number of the first packet sent but not yet acked.
+    uint16_t m_baseSeq;
 
-    ssize_t m_bytes;
     // The size of the file
+    ssize_t m_bytes;
 
 public:
 	TCP_Server(uint16_t port);
@@ -78,7 +78,7 @@ public:
     bool sendNextPacket();
 
     // call break_file before using this function
-    void sendFile();
+    bool sendFile();
 
 	// Accessors
 	int getSocketFD() const { return m_sockFD; }
@@ -87,15 +87,15 @@ public:
 	// Mutators
 	void setFilename(std::string filename) { m_filename = filename; }
 
-    int seq2index(uint16_t seq);
     // returns index of the file packets based on sequence number
+    int seq2index(uint16_t seq);
 
-    uint16_t index2seq(int index);
     // returns sequence number based on index of file packets
+    uint16_t index2seq(int index);
 
+    // Marks the corresponding file packet as marked and returns the ack.
+    // Call after reading data to receive buffer
     uint16_t receiveAck();
-    // Blocks until an ack is received. Marks the corresponding file packet
-    // as marked and returns the ack.
 };
 
 // TCP Client
