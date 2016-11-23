@@ -53,7 +53,7 @@ bool TCP_Server::receiveData() {
     // Clear out old content of receive buffer
     memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
     if(recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_clientInfo, &m_cliLen) == -1){
-        perror("Receiving Error");
+        // perror("Receiving Error");
         return false;
     }
     return true;
@@ -237,6 +237,50 @@ void TCP_Server::sendFile() {
             m_nextPacket++;
             int lastPacketSize = m_bytes % PACKET_DATA_SIZE;
         }
+    }
+
+    // TODO: Change timeout
+    setTimeout(0, RTO, 1);
+
+    // Send FIN
+    m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+    fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+    m_packet = new TCP_Packet(m_nextSeq, m_baseSeq, PACKET_SIZE, 0, 0, 1);
+    sendData(m_packet->encode());
+
+    // Retransmit FIN if timeout
+    while(!receiveData()){
+        fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+        sendData(m_packet->encode());
+    }
+    delete m_packet;
+
+    m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
+
+    // Receive FIN/ACK from client
+    m_packet = new TCP_Packet(m_recvBuffer);
+    uint16_t seq = m_packet->getHeader().fields[SEQ];
+    fprintf(stdout, "Receiving packet %hu\n", ack);
+    delete m_packet;
+
+    // Send ACK
+    m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+    fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+    m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 0, 0, 1);
+    sendData(m_packet->encode());
+
+    // Timed Wait
+    while(1){
+        // TODO: Change timeout
+        setTimeout(0, RTO, 0);
+
+        // Check if the timer successfully finishes (no more data was received)
+        if(!receiveData()){
+            break;
+        }
+
+        fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+        sendData(m_packet->encode());
     }
 }
 

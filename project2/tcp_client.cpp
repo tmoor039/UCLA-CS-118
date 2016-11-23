@@ -64,19 +64,43 @@ bool TCP_Client::receiveFile(){
 
     // Receive the file
     int nPackets = 0;
-    while(nPackets < 3144){
+    while(1){
         if(receiveData()){
             // Parse packet data
             m_packet = new TCP_Packet(m_recvBuffer);
             uint16_t ack = m_packet->getHeader().fields[ACK];
             uint16_t seq = m_packet->getHeader().fields[SEQ];
+            uint16_t flags = m_packet->getHeader().fields[FLAGS];
             uint8_t* data = m_packet->getData();
             for(int i = 0; i < m_recvSize; i++){
                 outputFile << data[i];
             }
             fprintf(stdout, "Receiving packet %hu\n", seq);
             delete m_packet;
+            
             // TODO: Deal with buffered data
+            
+            // Detect FIN bit
+            if (0x0001 & flags) {
+                // Send the FIN/ACK
+                fprintf(stdout, "Sending packet %d FIN\n", seq + m_recvSize - HEADER_SIZE);
+                m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 1);
+                sendData(m_packet->encode());
+                nPackets++;
+
+	            // TODO: Change timout
+                setTimeout(0, RTO, 1);
+	            
+                // Retransmit in case of timeout
+	            while(!receiveData()){
+		            fprintf(stdout, "Sending packet %d Retransmission FIN\n", seq + m_recvSize - HEADER_SIZE);
+		            sendData(m_packet->encode());
+	            }
+
+                outputFile.close();
+                return true;
+            }
+
             // Send the ACK
             fprintf(stdout, "Sending packet %d\n", seq + m_recvSize - HEADER_SIZE);
             m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 0);
@@ -84,8 +108,6 @@ bool TCP_Client::receiveFile(){
             nPackets++;
         }
     }
-    outputFile.close();
-    return true;
 }
 
 bool TCP_Client::setTimeout(float sec, float usec, bool flag){
