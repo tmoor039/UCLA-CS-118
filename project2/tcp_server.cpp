@@ -89,8 +89,8 @@ bool TCP_Server::handshake(){
     fprintf(stdout, "Receiving packet %hu\n", ack);
     delete m_packet;
 
-    //// Begin Sending Timeout
-    //setTimeout(0, RTO, 1);
+    // Begin Sending Timeout
+    setTimeout(0, RTO, 1);
 
     // Send SYN-ACK
     srand(time(NULL));
@@ -100,20 +100,20 @@ bool TCP_Server::handshake(){
     m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 1, 1, 0);
     sendData(m_packet->encode());
 
-    //// Retransmit data if timeout
-    //while(!receiveData()){
-    //    fprintf(stdout, "Sending packet %d %d %d Retransmission SYN\n", seq + 1, PACKET_SIZE, SSTHRESH);
-    //    sendData(m_packet->encode());
-    //}
+    // Retransmit data if timeout
+    while(!receiveData()){
+        fprintf(stdout, "Sending packet %d %d %d Retransmission SYN\n", seq + 1, PACKET_SIZE, SSTHRESH);
+        sendData(m_packet->encode());
+    }
 
     delete m_packet;
 
     m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
 
-    // wait to receive
-    while (!receiveData()) {
-        continue;
-    }
+    //// wait to receive
+    //while (!receiveData()) {
+    //    continue;
+    //}
 
     // Receive ACK from client
     m_packet = new TCP_Packet(m_recvBuffer);
