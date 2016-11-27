@@ -1,3 +1,6 @@
+#ifndef TCP_H
+#define TCP_H
+
 #include "globals.h"
 #include "packet.h"
 #include <string.h>
@@ -6,6 +9,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <vector>
+#include "congestion_control.h"
 
 // Abstract base TCP class
 class TCP {
@@ -52,20 +56,22 @@ class TCP_Server: TCP {
     int m_nextPacket;
 
     // in units of PACKET_SIZE
-    uint16_t m_cwnd;
+    int m_cwnd;
 
     // The sequence number of the first usable but not yet sent packet.
+    // In units of bytes.
     uint16_t m_nextSeq;
 
     // The sequence number of the first packet sent but not yet acked.
+    // In units of bytes.
     uint16_t m_baseSeq;
 
     // The size of the file
     ssize_t m_bytes;
 
-    // Congestion Control mode. Slow Start (SS) or Congestion Avoidance (CA).
-    enum CC_mode {SS, CA};
-
+    // Keeps track of the CC algorithm and the congestion window.
+    CongestionControl* CC; 
+    
 public:
 	TCP_Server(uint16_t port);
 
@@ -89,6 +95,7 @@ public:
 
 	// Mutators
 	void setFilename(std::string filename) { m_filename = filename; }
+    void setCCMode(CC_mode ccmode) { m_CCMode = ccmode; }
 
     // returns index of the file packets based on sequence number
     int seq2index(uint16_t seq);
@@ -99,7 +106,7 @@ public:
     // Marks the corresponding file packet as marked and returns the ack.
     // Call after reading data to receive buffer
     uint16_t receiveAck();
-
+    
     // Test function
     bool testWrite();
 };
@@ -126,3 +133,4 @@ public:
 
 };
 
+#endif // TCP_H

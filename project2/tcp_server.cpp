@@ -3,6 +3,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include <time.h>
+#include "globals.h"
 
 using namespace std;
 
@@ -36,6 +37,9 @@ TCP_Server::TCP_Server(uint16_t port)
     m_nextPacket = 0;
     m_basePacket = 0;
     m_cwnd = 1;
+    
+    // start with slow-start
+    m_CCMode = SS;
 }
 
 bool TCP_Server::sendData(uint8_t* data) {

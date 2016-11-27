@@ -16,4 +16,13 @@
 #define RTO 500000 // In ms
 #define RECEIVED_FILE_NAME "received.data"
 
+// Congestion Control algorithm
+enum CCMode {
+    SS, // Slow Start
+    CA  // Congestion Avoidance
+};
+
+#define MIN_CWND 1024
+#define INITIAL_SSTHRESH 15360
+
 #endif // GLOBALS_H
