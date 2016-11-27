@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <iostream>
 
 using namespace std;
 
@@ -34,10 +35,15 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
-  // For testing - REMOVE
-  fprintf(stdout, "END OF HANDSHAKE\n");
+    //// For testing - REMOVE
+    //fprintf(stdout, "END OF HANDSHAKE\n");
 
   tcpServer.breakFile();
+
+    // Testing breakfile
+    if (tcpServer.testWrite() == false) {
+        cout << "Test write error\n";
+    }
 
   tcpServer.sendFile();
 

@@ -89,8 +89,8 @@ bool TCP_Server::handshake(){
     fprintf(stdout, "Receiving packet %hu\n", ack);
     delete m_packet;
 
-    // Begin Sending Timeout
-    setTimeout(0, RTO, 1);
+    //// Begin Sending Timeout
+    //setTimeout(0, RTO, 1);
 
     // Send SYN-ACK
     srand(time(NULL));
@@ -100,14 +100,20 @@ bool TCP_Server::handshake(){
     m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 1, 1, 0);
     sendData(m_packet->encode());
 
-    // Retransmit data if timeout
-    while(!receiveData()){
-        fprintf(stdout, "Sending packet %d %d %d Retransmission SYN\n", seq + 1, PACKET_SIZE, SSTHRESH);
-        sendData(m_packet->encode());
-    }
+    //// Retransmit data if timeout
+    //while(!receiveData()){
+    //    fprintf(stdout, "Sending packet %d %d %d Retransmission SYN\n", seq + 1, PACKET_SIZE, SSTHRESH);
+    //    sendData(m_packet->encode());
+    //}
+
     delete m_packet;
 
     m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
+
+    // wait to receive
+    while (!receiveData()) {
+        continue;
+    }
 
     // Receive ACK from client
     m_packet = new TCP_Packet(m_recvBuffer);
@@ -157,6 +163,26 @@ bool TCP_Server::breakFile() {
         m_filePackets.push_back(packet);
         m_nextSeq = (m_nextSeq + remaining) % MAX_SEQ;
     }
+    
+    return true;
+}
+
+bool TCP_Server::testWrite() {
+    std::ofstream outf("test.dat");
+
+    if (!outf) {
+        std::cerr << "testWrite failed to open file for writing\n";
+        return false;
+    }
+
+    int nPackets = m_filePackets.size();
+    for (int i = 0; i < nPackets; i++) {
+        outf << m_filePackets.at(i).getData();    
+
+        // print data from just 1 packet
+        break;
+    }
+
     return true;
 }
 
@@ -219,7 +245,14 @@ bool TCP_Server::sendFile() {
             }
             continue;
         }
+        fprintf(stdout, "Sending packet %d\n", 
+                m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
 
+        bool sent = sendNextPacket();
+        if (!sent)  {
+            fprintf(stderr, "send error\n");
+        };
+/*
         // repeatedly send next packet until we hit the end of window.
         while (m_nextPacket < m_basePacket + m_cwnd) {
             fprintf(stdout, "Sending packet %d\n", 
@@ -233,7 +266,7 @@ bool TCP_Server::sendFile() {
                 m_nextPacket++;
             }
         }
-
+*/
         if (receiveData()) {
             ack = receiveAck();
             fprintf(stdout, "Receiving packet %d\n", ack);

@@ -72,8 +72,10 @@ bool TCP_Client::receiveFile(){
             uint16_t seq = m_packet->getHeader().fields[SEQ];
             uint16_t flags = m_packet->getHeader().fields[FLAGS];
             uint8_t* data = m_packet->getData();
-            for(int i = 0; i < m_recvSize; i++){
-                outputFile << data[i];
+            for(int i = 0; i < PACKET_DATA_SIZE; i++){
+                if (data[i] != '\0') {
+                    outputFile << data[i];
+                }
             }
             fprintf(stdout, "Receiving packet %hu\n", seq);
             delete m_packet;
@@ -132,19 +134,25 @@ bool TCP_Client::setTimeout(float sec, float usec, bool flag){
 bool TCP_Client::handshake(){
 	// Send the very first packet
 	fprintf(stdout, "Sending packet 0 SYN\n");
-	// Set Sending timeout
-	setTimeout(0, RTO, 1);
+	//// Set Sending timeout
+	//setTimeout(0, RTO, 1);
 
     srand(time(NULL));
-	m_packet = new TCP_Packet(rand()% MSS + 1, 0, PACKET_SIZE, 0, 1, 0);
+	//m_packet = new TCP_Packet(rand()% MSS + 1, 0, PACKET_SIZE, 0, 1, 0);
+    m_packet = new TCP_Packet(rand() % MAX_SEQ + 1, 0, PACKET_SIZE, 0, 1, 0);
 	sendData(m_packet->encode());
 
-	// Retransmit in case of timeout
-	while(!receiveData()){
-		fprintf(stdout, "Sending packet 0 Retransmission SYN\n");
-		sendData(m_packet->encode());
-	}
-	delete m_packet;
+	//// Retransmit in case of timeout
+	//while(!receiveData()){
+	//	fprintf(stdout, "Sending packet 0 Retransmission SYN\n");
+	//	sendData(m_packet->encode());
+	//}
+	//delete m_packet;
+
+    // wait to receive
+    while (!receiveData()) {
+        continue;
+    }
 
 	// Receive SYN-ACK from server
 	m_packet = new TCP_Packet(m_recvBuffer);

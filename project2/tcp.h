@@ -96,6 +96,9 @@ public:
     // Marks the corresponding file packet as marked and returns the ack.
     // Call after reading data to receive buffer
     uint16_t receiveAck();
+
+    // Test function
+    bool testWrite();
 };
 
 // TCP Client
