@@ -46,7 +46,7 @@ class TCP_Server: TCP {
 	int m_sockFD;
     std::vector<TCP_Packet> m_filePackets;
     // index for the oldest packet that has not yet been acked.
-    uint16_t m_basePacket;
+    int m_basePacket;
 
     // index for the next packet within the window that is ready to be sent.
     int m_nextPacket;
@@ -62,6 +62,9 @@ class TCP_Server: TCP {
 
     // The size of the file
     ssize_t m_bytes;
+
+    // Congestion Control mode. Slow Start (SS) or Congestion Avoidance (CA).
+    enum CC_mode {SS, CA};
 
 public:
 	TCP_Server(uint16_t port);

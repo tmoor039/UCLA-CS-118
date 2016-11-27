@@ -52,7 +52,9 @@ bool TCP_Server::sendData(uint8_t* data) {
 bool TCP_Server::receiveData() {
     // Clear out old content of receive buffer
     memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
-    if(recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_clientInfo, &m_cliLen) == -1){
+
+    // MSG_DONTWAIT makes it nonblocking
+    if(recvfrom(m_sockFD, m_recvBuffer, MSS, MSG_DONTWAIT, (struct sockaddr*)&m_clientInfo, &m_cliLen) == -1){
         // perror("Receiving Error");
         return false;
     }
@@ -203,58 +205,61 @@ bool TCP_Server::sendNextPacket() {
 }
 
 bool TCP_Server::sendFile() {
-    // TODO: manage window
-    
     int nPackets = m_filePackets.size();
-/*
-    int currentPacket = 0;
-    fprintf(stdout, "NUMBER OF PACKETS: %d\n", nPackets);
-    fprintf(stdout, "Sending packet %d\n", currentPacket);
-    sendData(m_filePackets[currentPacket].encode());
-    while(currentPacket < nPackets - 1){
-        if(receiveData()){
-            currentPacket++;
-            fprintf(stdout, "Sending packet %d\n", currentPacket);
-            sendData(m_filePackets[currentPacket].encode());
-        } else {
-            fprintf(stdout, "Sending packet %d\n", currentPacket);
-            sendData(m_filePackets[currentPacket].encode());
-        }
-    }
-*/
     uint16_t ack;
     std::cout << "nPackets: " << nPackets << std::endl;
     while (m_basePacket < nPackets) {
-        //std::cout << "base packet: " << m_basePacket << std::endl;
-        //std::cout << "next packet: " << m_nextPacket << std::endl;    
+        int oldBasePacket = m_basePacket;
+
         // if next packet is not within window, wait for window to shift right
-        if (m_nextPacket >= m_basePacket + m_cwnd) {
-            std::cout << "waiting for window to shift\n";
-            // wait to receive acknowledgement
+        while (m_nextPacket >= m_basePacket + m_cwnd) {
+
+            std::cout << "waiting to receive first ack\n";
+
+            // wait to receive first acknowledgement packet
             while (!receiveData()) {
                 continue;
             }
+
+            std::cout << "received first packet\n";
             ack = receiveAck();
             fprintf(stdout, "Receiving packet %d\n", ack);
 
-            // if first packet in window is acked
-            if (m_filePackets.at(m_basePacket).isAcked()) {
+            while (receiveData()) {
+                std::cout << "receiving more acks\n";
+                // mark corresponding file packet as acked
+                ack = receiveAck();
+                fprintf(stdout, "Receiving packet %d\n", ack);
+            }
+
+            // move window to the first unacked packet 
+            while (m_filePackets.at(m_basePacket).isAcked()) {
                 // move window forward
                 m_basePacket++;
+
+                if (m_basePacket >= nPackets) {
+                    // out of bounds
+                    break;
+                }
+
+                // this calculation is necessary for seq2index()
                 m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
             }
-            continue;
-        }
-        fprintf(stdout, "Sending packet %d\n", 
-                m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
 
-        bool sent = sendNextPacket();
-        if (!sent)  {
-            fprintf(stderr, "send error\n");
-        };
-/*
+            // if window has been moved, advance to the sending step
+            if (oldBasePacket != m_basePacket) {
+                std::cout << "window has moved; about to send more packets\n";
+                break;
+            }
+            else { 
+                // continue to wait for window to shift
+                continue;
+            }
+        }
+        
         // repeatedly send next packet until we hit the end of window.
-        while (m_nextPacket < m_basePacket + m_cwnd) {
+        while (m_nextPacket < m_basePacket + m_cwnd 
+                    && m_nextPacket < nPackets) {
             fprintf(stdout, "Sending packet %d\n", 
                         m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
             bool sent = sendNextPacket();
@@ -266,39 +271,7 @@ bool TCP_Server::sendFile() {
                 m_nextPacket++;
             }
         }
-*/
-        if (receiveData()) {
-            ack = receiveAck();
-            fprintf(stdout, "Receiving packet %d\n", ack);
-        }
 
-        // if base packet is acked, move window forward
-        if (m_filePackets.at(m_basePacket).isAcked()) {
-            m_basePacket++;
-            m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-        }
-
-        /*
-        // Receive all ack packets
-        while (receiveData()) {
-            ack = receiveAck();
-            fprintf(stdout, "Receiving packet %d\n", ack);
-
-            // if base packet is acked, move window forward
-            if (m_filePackets.at(m_basePacket).isAcked()) {
-                m_basePacket++;
-                m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-            }
-        }
-        std::cout << "done receiving acks\n";
-        */
-
-        // advance next packet
-        m_nextPacket++;
-            
-        // TODO: how to send the last packet
-        //m_nextPacket++;
-        //int lastPacketSize = m_bytes % PACKET_DATA_SIZE;
     }
 
     // TODO: Change timeout
@@ -362,6 +335,11 @@ uint16_t TCP_Server::receiveAck() {
 
 int TCP_Server::seq2index(uint16_t seq) {
     int seqOffset = (seq - m_baseSeq);
+
+    // wrap-around case
+    if (seq < m_baseSeq) {
+        seqOffset = (MAX_SEQ - m_baseSeq) + seq;
+    }
     int indexOffset = seqOffset / PACKET_DATA_SIZE;
     return m_basePacket + indexOffset;
 }
