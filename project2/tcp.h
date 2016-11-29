@@ -68,9 +68,11 @@ class TCP_Server: TCP {
 
     // The size of the file
     ssize_t m_bytes;
+    
+    CCMode m_CCMode;
 
     // Keeps track of the CC algorithm and the congestion window.
-    CongestionControl* CC; 
+    // CongestionControl* CC; 
     
 public:
 	TCP_Server(uint16_t port);
@@ -95,7 +97,7 @@ public:
 
 	// Mutators
 	void setFilename(std::string filename) { m_filename = filename; }
-    void setCCMode(CC_mode ccmode) { m_CCMode = ccmode; }
+    void setCCMode(CCMode ccmode) { m_CCMode = ccmode; }
 
     // returns index of the file packets based on sequence number
     int seq2index(uint16_t seq);
