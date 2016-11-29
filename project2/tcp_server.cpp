@@ -196,10 +196,13 @@ bool TCP_Server::sendNextPacket() {
     if (m_filePackets.at(m_nextPacket).isSent()) {
         return false;
     }
+    // next packet is within window and does not exceed the file
     else if(m_nextPacket < m_basePacket + m_cwnd && m_nextPacket < m_filePackets.size()){
-        // next packet is within window and does not exceed the file
+        // Only send the variable packet length
+        ssize_t packet_size = m_filePackets.at(m_nextPacket).getLength();
+        
         nSent = sendto(m_sockFD, m_filePackets.at(m_nextPacket).encode(),
-                MSS, 0, (struct sockaddr*)&m_clientInfo, m_cliLen);
+                packet_size, 0, (struct sockaddr*)&m_clientInfo, m_cliLen);
         m_filePackets.at(m_nextPacket).setSent();
         return true;
     }
