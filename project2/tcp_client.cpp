@@ -67,49 +67,48 @@ bool TCP_Client::receiveFile(){
     while(1){
         if(receiveData()){
             // Parse packet data
-            m_packet = new TCP_Packet(m_recvBuffer);
+            m_packet = new TCP_Packet(m_recvBuffer, m_recvSize);
             uint16_t ack = m_packet->getHeader().fields[ACK];
             uint16_t seq = m_packet->getHeader().fields[SEQ];
             uint16_t flags = m_packet->getHeader().fields[FLAGS];
-            uint8_t* data = m_packet->getData();
-            for(int i = 0; i < PACKET_DATA_SIZE; i++){
-                if (data[i] != '\0') {
-                    outputFile << data[i];
-                }
-            }
-            fprintf(stdout, "Receiving packet %hu\n", seq);
-            delete m_packet;
-            
-            // TODO: Deal with buffered data
-            
-            // Detect FIN bit
-            if (0x0001 & flags) {
-                // Send the FIN/ACK
-                fprintf(stdout, "Sending packet %d FIN\n", seq + m_recvSize - HEADER_SIZE);
-                m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 1);
-                sendData(m_packet->encode());
-                nPackets++;
+            vector<uint8_t>* data = m_packet->getData();
+            ssize_t data_size = data->size();
+			for(int i = 0; i < data_size; i++){
+				outputFile << data->at(i);
+			}
+			fprintf(stdout, "Receiving packet %hu\n", seq);
+			delete m_packet;
 
-	            // TODO: Change timout
-                setTimeout(0, RTO, 1);
-	            
-                // Retransmit in case of timeout
-	            while(!receiveData()){
-		            fprintf(stdout, "Sending packet %d Retransmission FIN\n", seq + m_recvSize - HEADER_SIZE);
-		            sendData(m_packet->encode());
-	            }
+			// TODO: Deal with buffered data
 
-                outputFile.close();
-                return true;
-            }
+			// Detect FIN bit
+			if (0x0001 & flags) {
+				// Send the FIN/ACK
+				fprintf(stdout, "Sending packet %d FIN\n", seq + m_recvSize - HEADER_SIZE);
+				m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 1);
+				sendData(m_packet->encode());
+				nPackets++;
 
-            // Send the ACK
-            fprintf(stdout, "Sending packet %d\n", seq + m_recvSize - HEADER_SIZE);
-            m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 0);
-            sendData(m_packet->encode());
-            nPackets++;
-        }
-    }
+				// TODO: Change timout
+				setTimeout(0, RTO, 1);
+
+				// Retransmit in case of timeout
+				while(!receiveData()){
+					fprintf(stdout, "Sending packet %d Retransmission FIN\n", seq + m_recvSize - HEADER_SIZE);
+					sendData(m_packet->encode());
+				}
+
+				outputFile.close();
+				return true;
+			}
+
+			// Send the ACK
+			fprintf(stdout, "Sending packet %d\n", seq + m_recvSize - HEADER_SIZE);
+			m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 0);
+			sendData(m_packet->encode());
+			nPackets++;
+		}
+	}
 }
 
 bool TCP_Client::setTimeout(float sec, float usec, bool flag){
@@ -137,9 +136,9 @@ bool TCP_Client::handshake(){
 	// Set Sending timeout
 	setTimeout(0, RTO, 1);
 
-    srand(time(NULL));
+	srand(time(NULL));
 	//m_packet = new TCP_Packet(rand()% MSS + 1, 0, PACKET_SIZE, 0, 1, 0);
-    m_packet = new TCP_Packet(rand() % MAX_SEQ + 1, 0, PACKET_SIZE, 0, 1, 0);
+	m_packet = new TCP_Packet(rand() % MAX_SEQ + 1, 0, PACKET_SIZE, 0, 1, 0);
 	sendData(m_packet->encode());
 
 	// Retransmit in case of timeout
@@ -149,10 +148,10 @@ bool TCP_Client::handshake(){
 	}
 	delete m_packet;
 
-    //// wait to receive
-    //while (!receiveData()) {
-    //    continue;
-    //}
+	//// wait to receive
+	//while (!receiveData()) {
+	//    continue;
+	//}
 
 	// Receive SYN-ACK from server
 	m_packet = new TCP_Packet(m_recvBuffer);
@@ -167,15 +166,15 @@ bool TCP_Client::handshake(){
 
 	// Retransmit in case of a timeout
 	/*while(!receiveData()){
-		fprintf(stdout, "Sending packet %d Retransmission\n", seq+1);
-		sendData(m_packet->encode());
-	}
-	delete m_packet;*/
+	  fprintf(stdout, "Sending packet %d Retransmission\n", seq+1);
+	  sendData(m_packet->encode());
+	  }
+	  delete m_packet;*/
 
 	// Receive the data from the server and begin normal retrieval
 	/*m_packet = new TCP_Packet(m_recvBuffer);
-	seq = m_packet->getHeader().fields[SEQ];
-	fprintf(stdout, "Receiving packet %hu\n", seq);*/
+	  seq = m_packet->getHeader().fields[SEQ];
+	  fprintf(stdout, "Receiving packet %hu\n", seq);*/
 	// Delete packet here or nah?
 	return true;
 }

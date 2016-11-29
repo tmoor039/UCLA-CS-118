@@ -164,7 +164,7 @@ bool TCP_Server::breakFile() {
         // Read remaining bytes and store and forward sequence number
         file.read(data, remaining);
         TCP_Packet packet(m_nextSeq, 0, m_cwnd, 0, 0, 0);
-        packet.setData(data);
+        packet.setData(data, remaining);
         m_filePackets.push_back(packet);
         m_nextSeq = (m_nextSeq + remaining) % MAX_SEQ;
     }
@@ -182,7 +182,10 @@ bool TCP_Server::testWrite() {
 
     int nPackets = m_filePackets.size();
     for (int i = 0; i < nPackets; i++) {
-        outf.write((char*)m_filePackets.at(i).getData(), PACKET_DATA_SIZE);
+        vector<uint8_t>* curr_packet = m_filePackets.at(i).getData();
+    	//ssize_t curr_data_size = curr_packet->size();
+        //outf.write((char*)m_filePackets.at(i).getData(), data_size);
+        copy(curr_packet->begin(), curr_packet->end(), ostream_iterator<uint8_t>(outf));
     }
 
     return true;

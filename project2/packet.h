@@ -1,5 +1,6 @@
 #include "globals.h"
 #include <sys/types.h>
+#include <vector>
 #include "stdint.h"
 
 class TCP_Packet {
@@ -30,8 +31,8 @@ class TCP_Packet {
 		}
 
 	} m_header;
-	uint8_t m_data[PACKET_SIZE] = {0};
-  uint8_t* m_encoded_packet = nullptr;
+	std::vector<uint8_t> m_data; 
+  	uint8_t* m_encoded_packet = nullptr;
 
     // mark packet as sent and acked as necessary
     bool m_sent;
@@ -43,23 +44,23 @@ class TCP_Packet {
 public:
 	// Single constructor with optional Data
 	TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win, bool f_ack, bool f_syn,
-			bool f_fin, uint8_t* data = nullptr);
+			bool f_fin, uint8_t* data = nullptr, ssize_t data_size = PACKET_SIZE);
 	// Constructor that decodes data stream into TCP Packet
-	TCP_Packet(uint8_t* enc_stream);
+	TCP_Packet(uint8_t* enc_stream, int enc_size = MSS);
   // Destructor to remove any heap allocated objects
   ~TCP_Packet();
 	// Accessors
-	uint8_t* getData() { return m_data; }
-	TCP_Header getHeader() { return m_header; }
-    bool isAcked() { return m_acked; }
-    bool isSent() { return m_sent; }
-    int get_length() { return m_length; }
+  std::vector<uint8_t>* getData() { return &m_data; }
+  TCP_Header getHeader() { return m_header; }
+  bool isAcked() { return m_acked; }
+  bool isSent() { return m_sent; }
+  int get_length() { return m_length; }
 
-	uint8_t* encode();
+  uint8_t* encode();
 
-	// Mutators
-	bool setData(char* data);
-    void setAcked() { m_acked = true; }
-    void setSent() { m_sent = true; }
-    void setLength(int len) { m_length = len; }
+  // Mutators
+  bool setData(char* data, int data_size = PACKET_SIZE);
+  void setAcked() { m_acked = true; }
+  void setSent() { m_sent = true; }
+  void setLength(int len) { m_length = len; }
 };
