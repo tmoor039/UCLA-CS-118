@@ -12,7 +12,7 @@ class TCP_Packet {
 		bool encode(uint8_t* enc) {
 			// Break 2 byte values by high and low byte fields
 			if(enc){
-				for(ssize_t i = 0; i < 2 * NUM_FIELDS; i+=2){
+				for(ssize_t i = 0; i < HEADER_SIZE; i+=2){
 					enc[i] = fields[i/2] & 0xFF;
 					enc[i+1] = fields[i/2] >> 8;
 				}
@@ -22,7 +22,7 @@ class TCP_Packet {
 		}
 		bool decode(uint8_t* dec){
 			if(dec){
-				for(ssize_t i = 0; i < 2*NUM_FIELDS; i+=2){
+				for(ssize_t i = 0; i < HEADER_SIZE; i+=2){
 					fields[i/2] = (dec[i+1] << 8) | dec[i];
 				}
 				return true;
@@ -38,9 +38,6 @@ class TCP_Packet {
     bool m_sent;
     bool m_acked;
 
-    int m_length;
-    // length of data;
-
 public:
 	// Single constructor with optional Data
 	TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win, bool f_ack, bool f_syn,
@@ -54,7 +51,7 @@ public:
   TCP_Header getHeader() { return m_header; }
   bool isAcked() { return m_acked; }
   bool isSent() { return m_sent; }
-  int get_length() { return m_length; }
+  int getLength() { return m_data.size() + HEADER_SIZE; }
 
   uint8_t* encode();
 
@@ -62,5 +59,4 @@ public:
   bool setData(char* data, int data_size = PACKET_SIZE);
   void setAcked() { m_acked = true; }
   void setSent() { m_sent = true; }
-  void setLength(int len) { m_length = len; }
 };

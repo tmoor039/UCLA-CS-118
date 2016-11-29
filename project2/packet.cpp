@@ -23,7 +23,7 @@ TCP_Packet::TCP_Packet(uint8_t* enc_stream, int enc_size){
 	if(enc_stream){
 		m_header.decode(enc_stream);
 	}
-	for(ssize_t i = 2*NUM_FIELDS; i < enc_size; i++){
+	for(ssize_t i = HEADER_SIZE; i < enc_size; i++){
 		m_data.push_back(enc_stream[i]);
 	}
 }
@@ -36,14 +36,13 @@ TCP_Packet::~TCP_Packet(){
 
 // Encode into byte array
 uint8_t* TCP_Packet::encode(){
-	uint8_t* m_encoded_packet = new uint8_t[MSS];
+	ssize_t total_size = m_data.size() + HEADER_SIZE;
+	uint8_t* m_encoded_packet = new uint8_t[total_size];
 	// Header encoding - nullptr returned on error
 	if(!m_header.encode(m_encoded_packet)) { return nullptr; }
 	// The first 8 bytes have been encoded, encode the data
-	ssize_t header_size = 2*NUM_FIELDS;
-	ssize_t total_size = m_data.size() + header_size;
-	for(ssize_t i = header_size; i < total_size; i++){
-		m_encoded_packet[i] = m_data[i-header_size];
+	for(ssize_t i = HEADER_SIZE; i < total_size; i++){
+		m_encoded_packet[i] = m_data[i-HEADER_SIZE];
 	}
 	return m_encoded_packet;
 }
