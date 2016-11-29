@@ -91,7 +91,7 @@ bool TCP_Client::receiveFile(){
 
             // If an expected packet was received, check if there are more correctly-ordered packets in the buffer
             if (seq == m_expected_seq) {
-                m_expected_seq++;
+                m_expected_seq = (m_expected_seq + 1) % MAX_SEQ;
                 while (packet_buffer.size() > 0 && m_expected_seq == packet_buffer[0]->getHeader().fields[SEQ]){
                     packet_buffer.erase(packet_buffer.begin());
                 }
@@ -180,7 +180,7 @@ bool TCP_Client::handshake(){
 	m_packet = new TCP_Packet(m_recvBuffer);
 	uint16_t ack = m_packet->getHeader().fields[ACK];
 	uint16_t seq = m_packet->getHeader().fields[SEQ];
-    m_expected_seq = seq + 1;
+    m_expected_seq = (seq + 1) % MAX_SEQ;
 	fprintf(stdout, "Receiving packet %hu\n", seq);
 	delete m_packet;
 
