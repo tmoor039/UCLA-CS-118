@@ -60,7 +60,7 @@ bool TCP_Client::receiveFile(){
     // Open a new file
     ofstream outputFile(RECEIVED_FILE_NAME);
 
-    // TODO: Create data buffer
+    vector<TCP_Packet*> packet_buffer;
 
     // Receive the file
     int nPackets = 0;
@@ -157,11 +157,12 @@ bool TCP_Client::handshake(){
 	m_packet = new TCP_Packet(m_recvBuffer);
 	uint16_t ack = m_packet->getHeader().fields[ACK];
 	uint16_t seq = m_packet->getHeader().fields[SEQ];
+    m_expected_seq = seq + 1;
 	fprintf(stdout, "Receiving packet %hu\n", seq);
 	delete m_packet;
 	// Send the ACK from the client to begin data transmission
-	fprintf(stdout, "Sending packet %d\n", seq+1);
-	m_packet = new TCP_Packet(ack, seq + 1, PACKET_SIZE, 1, 0, 0);
+	fprintf(stdout, "Sending packet %d\n", ack);
+	m_packet = new TCP_Packet(ack, m_expected_seq, PACKET_SIZE, 1, 0, 0);
 	sendData(m_packet->encode());
 
 	// Retransmit in case of a timeout

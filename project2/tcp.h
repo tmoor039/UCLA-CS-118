@@ -119,6 +119,7 @@ class TCP_Client: TCP {
 	struct sockaddr_in m_serverInfo;
 	socklen_t m_serverLen = sizeof(m_serverInfo);
 	int m_sockFD;
+    uint16_t m_expected_seq;
 
 public:
 	TCP_Client(std::string serverHost, uint16_t port);
