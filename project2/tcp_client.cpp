@@ -11,17 +11,20 @@ using namespace std;
 TCP_Client::TCP_Client(string serverHost, uint16_t port)
 	: TCP(port), m_serverHost(serverHost)
 {
+
 	// Create a socket under UDP Protocol
 	m_sockFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if(m_sockFD == -1){
 		perror("Socket FD Error");
 		m_status = false;
 	}
+
 	// Zero out the server address fields
 	memset((char *)&m_serverInfo, 0, m_serverLen);
 	m_serverInfo.sin_family = AF_INET;
 	m_serverInfo.sin_port = htons(port);
 	if(m_status){
+
 		// Convert hostname to ip address
 		string hostname = serverHost;
 		if(serverHost == "localhost") { hostname = "127.0.0.1"; }
@@ -30,22 +33,25 @@ TCP_Client::TCP_Client(string serverHost, uint16_t port)
 			m_status = false;
 		}
 	}
-	// No need to connect since UDP is connectionless
 }
 
 bool TCP_Client::sendData(uint8_t* data, ssize_t data_size){
+
 	// Clear out the send buffer
 	memset(m_sendBuffer, '\0', sizeof(m_sendBuffer));
+
 	// Copy the encoded data to the send buffer
 	copy(data, data + data_size, m_sendBuffer);
 	if(sendto(m_sockFD, m_sendBuffer, data_size, 0, (struct sockaddr*)&m_serverInfo, m_serverLen) == -1){
 		perror("Sending Error");
 		return false;
 	}
+
 	return true;
 }
 
 bool TCP_Client::receiveData(){
+
 	// Clear out the old content of the receive buffer
 	memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
 	m_recvSize = recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, &m_serverLen);
@@ -53,10 +59,12 @@ bool TCP_Client::receiveData(){
 		perror("Receiving Error");
 		return false;
 	}
+
 	return true;
 }
 
 bool TCP_Client::receiveFile(){
+
     // Open a new file
     ofstream outputFile(RECEIVED_FILE_NAME);
 
@@ -67,6 +75,7 @@ bool TCP_Client::receiveFile(){
     int nPackets = 0;
     while(1){
         if(receiveData()){
+
             // Parse packet data
             m_packet = new TCP_Packet(m_recvBuffer, m_recvSize);
             uint16_t ack = m_packet->getHeader().fields[ACK];
@@ -106,8 +115,7 @@ bool TCP_Client::receiveFile(){
 				sendData(m_packet->encode());
 				nPackets++;
 
-				// TODO: Change timout
-				setTimeout(0, RTO, 1);
+				setTimeout(0, RTO, 0);
 
 				// Retransmit in case of timeout
 				while(!receiveData()){
@@ -132,6 +140,7 @@ bool TCP_Client::setTimeout(float sec, float usec, bool flag){
 	struct timeval tv;
 	tv.tv_sec = sec;
 	tv.tv_usec = usec;
+
 	// If flag is 1 then send timeout else receive timeout
 	if(flag){
 		if(setsockopt(m_sockFD, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv)) < 0){
@@ -148,13 +157,15 @@ bool TCP_Client::setTimeout(float sec, float usec, bool flag){
 }
 
 bool TCP_Client::handshake(){
+
 	// Send the very first packet
 	fprintf(stdout, "Sending packet 0 SYN\n");
+
 	// Set Sending timeout
 	setTimeout(0, RTO, 1);
 
 	srand(time(NULL));
-	//m_packet = new TCP_Packet(rand()% MSS + 1, 0, PACKET_SIZE, 0, 1, 0);
+
 	m_packet = new TCP_Packet(rand() % MAX_SEQ + 1, 0, PACKET_SIZE, 0, 1, 0);
 	sendData(m_packet->encode());
 
@@ -165,11 +176,6 @@ bool TCP_Client::handshake(){
 	}
 	delete m_packet;
 
-	//// wait to receive
-	//while (!receiveData()) {
-	//    continue;
-	//}
-
 	// Receive SYN-ACK from server
 	m_packet = new TCP_Packet(m_recvBuffer);
 	uint16_t ack = m_packet->getHeader().fields[ACK];
@@ -177,22 +183,11 @@ bool TCP_Client::handshake(){
     m_expected_seq = seq + 1;
 	fprintf(stdout, "Receiving packet %hu\n", seq);
 	delete m_packet;
+
 	// Send the ACK from the client to begin data transmission
 	fprintf(stdout, "Sending packet %d\n", ack);
 	m_packet = new TCP_Packet(ack, m_expected_seq, PACKET_SIZE, 1, 0, 0);
 	sendData(m_packet->encode());
 
-	// Retransmit in case of a timeout
-	/*while(!receiveData()){
-	  fprintf(stdout, "Sending packet %d Retransmission\n", seq+1);
-	  sendData(m_packet->encode());
-	  }
-	  delete m_packet;*/
-
-	// Receive the data from the server and begin normal retrieval
-	/*m_packet = new TCP_Packet(m_recvBuffer);
-	  seq = m_packet->getHeader().fields[SEQ];
-	  fprintf(stdout, "Receiving packet %hu\n", seq);*/
-	// Delete packet here or nah?
 	return true;
 }
