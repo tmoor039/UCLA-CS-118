@@ -33,12 +33,12 @@ TCP_Client::TCP_Client(string serverHost, uint16_t port)
 	// No need to connect since UDP is connectionless
 }
 
-bool TCP_Client::sendData(uint8_t* data){
+bool TCP_Client::sendData(uint8_t* data, ssize_t data_size){
 	// Clear out the send buffer
 	memset(m_sendBuffer, '\0', sizeof(m_sendBuffer));
 	// Copy the encoded data to the send buffer
-	copy(data, data + MSS, m_sendBuffer);
-	if(sendto(m_sockFD, m_sendBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, m_serverLen) == -1){
+	copy(data, data + data_size, m_sendBuffer);
+	if(sendto(m_sockFD, m_sendBuffer, data_size, 0, (struct sockaddr*)&m_serverInfo, m_serverLen) == -1){
 		perror("Sending Error");
 		return false;
 	}

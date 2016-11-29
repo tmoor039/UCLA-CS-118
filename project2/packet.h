@@ -34,9 +34,10 @@ class TCP_Packet {
 	std::vector<uint8_t> m_data; 
   	uint8_t* m_encoded_packet = nullptr;
 
-    // mark packet as sent and acked as necessary
-    bool m_sent;
-    bool m_acked;
+    // Mark packet as sent and acked as necessary
+    // Packets by default arent acked or sent
+    bool m_sent = false;
+    bool m_acked = false;
 
 public:
 	// Single constructor with optional Data

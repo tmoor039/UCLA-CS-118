@@ -42,12 +42,12 @@ TCP_Server::TCP_Server(uint16_t port)
     m_CCMode = SS;
 }
 
-bool TCP_Server::sendData(uint8_t* data) {
+bool TCP_Server::sendData(uint8_t* data, ssize_t data_size) {
     // Clear out old content of send buffer
     memset(m_sendBuffer, '\0', sizeof(m_sendBuffer));
     // Copy the encoded data into the send buffer
-    copy(data, data + MSS, m_sendBuffer);
-    if(sendto(m_sockFD, m_sendBuffer, MSS, 0, (struct sockaddr*)&m_clientInfo, m_cliLen) == -1){
+    copy(data, data + data_size, m_sendBuffer);
+    if(sendto(m_sockFD, m_sendBuffer, data_size, 0, (struct sockaddr*)&m_clientInfo, m_cliLen) == -1){
         perror("Sending Error");
         return false;
     }
@@ -58,8 +58,8 @@ bool TCP_Server::receiveData() {
     memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
 
     // MSG_DONTWAIT makes it nonblocking
-    if(recvfrom(m_sockFD, m_recvBuffer, MSS, MSG_DONTWAIT, (struct sockaddr*)&m_clientInfo, &m_cliLen) == -1){
-        // perror("Receiving Error");
+    if(recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_clientInfo, &m_cliLen) == -1){
+        perror("Receiving Error");
         return false;
     }
     return true;
@@ -87,8 +87,10 @@ bool TCP_Server::handshake(){
     // First receive packet from client
     while(!receiveData()){
         // Just keep trying
+        continue;
     }
 
+	// Determine packet just received
     m_packet = new TCP_Packet(m_recvBuffer);
     uint16_t ack = m_packet->getHeader().fields[ACK];
     uint16_t seq = m_packet->getHeader().fields[SEQ];
@@ -115,11 +117,6 @@ bool TCP_Server::handshake(){
     delete m_packet;
 
     m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
-
-    //// wait to receive
-    //while (!receiveData()) {
-    //    continue;
-    //}
 
     // Receive ACK from client
     m_packet = new TCP_Packet(m_recvBuffer);
@@ -181,10 +178,9 @@ bool TCP_Server::testWrite() {
     }
 
     int nPackets = m_filePackets.size();
+    // Write each packet's data to ensure the breaking of the file is correct
     for (int i = 0; i < nPackets; i++) {
         vector<uint8_t>* curr_packet = m_filePackets.at(i).getData();
-    	//ssize_t curr_data_size = curr_packet->size();
-        //outf.write((char*)m_filePackets.at(i).getData(), data_size);
         copy(curr_packet->begin(), curr_packet->end(), ostream_iterator<uint8_t>(outf));
     }
 
@@ -192,7 +188,6 @@ bool TCP_Server::testWrite() {
 }
 
 bool TCP_Server::sendNextPacket() {
-    int nSent;
     if (m_filePackets.at(m_nextPacket).isSent()) {
         return false;
     }
@@ -200,9 +195,9 @@ bool TCP_Server::sendNextPacket() {
     else if(m_nextPacket < m_basePacket + m_cwnd && m_nextPacket < m_filePackets.size()){
         // Only send the variable packet length
         ssize_t packet_size = m_filePackets.at(m_nextPacket).getLength();
-        
-        nSent = sendto(m_sockFD, m_filePackets.at(m_nextPacket).encode(),
-                packet_size, 0, (struct sockaddr*)&m_clientInfo, m_cliLen);
+        if(!sendData(m_filePackets.at(m_nextPacket).encode(), packet_size)){
+        	return false;
+		}
         m_filePackets.at(m_nextPacket).setSent();
         return true;
     }
@@ -213,6 +208,7 @@ bool TCP_Server::sendNextPacket() {
 bool TCP_Server::sendFile() {
     int nPackets = m_filePackets.size();
     uint16_t ack;
+    // For Testing
     std::cout << "nPackets: " << nPackets << std::endl;
     while (m_basePacket < nPackets) {
         int oldBasePacket = m_basePacket;
@@ -333,21 +329,35 @@ uint16_t TCP_Server::receiveAck() {
     delete ackPacket;
 
     // mark packet as acked
-    int packet = seq2index(ack) - 1;
-    m_filePackets.at(packet).setAcked();
+    int packet = seq2index(ack);
+    if(packet < 0){ 
+    	perror("Couldn't find packet");
+    	exit(1);
+	}
+    m_filePackets.at(packet-1).setAcked();
 
     return ack;
 }
 
 int TCP_Server::seq2index(uint16_t seq) {
-    int seqOffset = (seq - m_baseSeq);
+    /*int seqOffset = (seq - m_baseSeq);
 
     // wrap-around case
     if (seq < m_baseSeq) {
         seqOffset = (MAX_SEQ - m_baseSeq) + seq;
     }
     int indexOffset = seqOffset / PACKET_DATA_SIZE;
-    return m_basePacket + indexOffset;
+    return m_basePacket + indexOffset;*/
+    // Run a linear scan within the window to find corresponding
+    // packet to sequence number
+    ssize_t packet_buffer_size = m_filePackets.size();
+    for(ssize_t i = 0; i < packet_buffer_size; i++){
+    	if(m_filePackets.at(i).getHeader().fields[SEQ] == seq){
+    		return i;
+		}
+	}
+	// Couldn't find packet with given sequence number
+	return -1;
 }
 
 uint16_t TCP_Server::index2seq(int index) {

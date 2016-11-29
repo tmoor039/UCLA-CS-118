@@ -31,7 +31,7 @@ public:
 	}
 	// Pure virtual methods
 	virtual bool handshake() = 0;
-	virtual bool sendData(uint8_t* data) = 0;
+	virtual bool sendData(uint8_t* data, ssize_t data_size = MSS) = 0;
 	virtual bool receiveData() = 0;
 	virtual bool setTimeout(float sec, float usec, bool flag) = 0;
 	
@@ -78,7 +78,7 @@ public:
 	TCP_Server(uint16_t port);
 
 	bool handshake() override;
-	bool sendData(uint8_t* data) override;
+	bool sendData(uint8_t* data, ssize_t data_size = MSS) override;
 	bool receiveData() override;
 	bool setTimeout(float sec, float usec, bool flag) override;
 
@@ -124,7 +124,7 @@ public:
 	TCP_Client(std::string serverHost, uint16_t port);
 
 	bool handshake() override;
-	bool sendData(uint8_t* data) override;
+	bool sendData(uint8_t* data, ssize_t data_size = MSS) override;
 	bool receiveData() override;
     bool receiveFile();
 	bool setTimeout(float sec, float usec, bool flag) override;
