@@ -60,6 +60,7 @@ bool TCP_Client::receiveFile(){
     // Open a new file
     ofstream outputFile(RECEIVED_FILE_NAME);
 
+    // Create a vector to hold buffered packets
     vector<TCP_Packet*> packet_buffer;
 
     // Receive the file
@@ -79,7 +80,23 @@ bool TCP_Client::receiveFile(){
 			fprintf(stdout, "Receiving packet %hu\n", seq);
 			delete m_packet;
 
-			// TODO: Deal with buffered data
+            // If an expected packet was received, check if there are more correctly-ordered packets in the buffer
+            if (seq == m_expected_seq) {
+                m_expected_seq++;
+                while (packet_buffer.size() > 0 && m_expected_seq == packet_buffer[0]->getHeader().fields[SEQ]){
+                    packet_buffer.erase(packet_buffer.begin());
+                }
+            }
+
+            // If an unexpected packet was received, add it to the buffer in sequence order
+            else {
+                for (vector<TCP_Packet*>::iterator it = packet_buffer.begin(); it != packet_buffer.end(); it++){
+                    TCP_Packet* current_packet = *it;
+                    if (seq <= current_packet->getHeader().fields[SEQ] || it == packet_buffer.end() - 1) {
+                        packet_buffer.insert(it, m_packet);
+                    }
+                }
+            }
 
 			// Detect FIN bit
 			if (0x0001 & flags) {
