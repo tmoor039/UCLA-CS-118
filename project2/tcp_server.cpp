@@ -126,7 +126,6 @@ bool TCP_Server::handshake(){
     ack = m_packet->getHeader().fields[ACK];
     fprintf(stdout, "Receiving packet %hu\n", ack);
     delete m_packet;
-    // Delete packet or not?
     return true;
 }
 
@@ -183,10 +182,7 @@ bool TCP_Server::testWrite() {
 
     int nPackets = m_filePackets.size();
     for (int i = 0; i < nPackets; i++) {
-        outf << m_filePackets.at(i).getData();    
-
-        // print data from just 1 packet
-        break;
+        outf.write((char*)m_filePackets.at(i).getData(), PACKET_DATA_SIZE);
     }
 
     return true;
