@@ -1,6 +1,7 @@
 #include "globals.h"
 #include <sys/types.h>
 #include <vector>
+#include <sys/time.h>
 #include "stdint.h"
 
 class TCP_Packet {
@@ -33,6 +34,7 @@ class TCP_Packet {
 	} m_header;
 	std::vector<uint8_t> m_data; 
   	uint8_t* m_encoded_packet = nullptr;
+	struct timeval m_time_sent;
 
     // Mark packet as sent and acked as necessary
     // Packets by default arent acked or sent
@@ -55,9 +57,11 @@ public:
   int getLength() { return m_data.size() + HEADER_SIZE; }
 
   uint8_t* encode();
+  bool hasTimedOut();
 
   // Mutators
   bool setData(char* data, int data_size = PACKET_SIZE);
+  void startTimer() { gettimeofday(&m_time_sent, NULL); }
   void setAcked() { m_acked = true; }
   void setSent() { m_sent = true; }
 };

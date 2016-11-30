@@ -76,7 +76,8 @@ bool TCP_Server::receiveData() {
     memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
 
     // MSG_DONTWAIT makes it nonblocking
-    if(recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_clientInfo, &m_cliLen) == -1){
+	ssize_t m_recvSize = recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_clientInfo, &m_cliLen);
+    if(m_recvSize == -1){
         perror("Receiving Error");
         return false;
     }
@@ -153,34 +154,38 @@ bool TCP_Server::grabChunk(ssize_t num_chunks){
 		return false;
 	}
 	bool shouldEnd = false;
-	for(ssize_t i = 0; i < num_chunks; i++){
-		ssize_t data_size = 0;
-		// Clear out the data
-		memset(data, '\0', sizeof(data));
-		ssize_t file_pos = m_file.tellg();
-		// There is no longer a fixed chunk of data left
-		if(file_pos + PACKET_SIZE > m_bytes){
-			// Get the remaining bytes
-			ssize_t remaining = m_bytes - m_file.tellg();
-			m_file.read(data, remaining);
-			data_size = remaining;
-			shouldEnd = true;
-		} else {
-			// Read fixed chunks
-			m_file.read(data, PACKET_SIZE);
-			data_size = PACKET_SIZE;
-		}
-		// Create a packet based on data
-		TCP_Packet packet(m_nextSeq, 0, m_cwnd*PACKET_DATA_SIZE, 0, 0, 0);
-		packet.setData(data, data_size);
-		m_filePackets.push_back(packet);
-		// Set the next sequence
-		m_nextSeq = (m_nextSeq + data_size) % MAX_SEQ;
-		// If we just grabbed the remaining chunk, we're done with data
-		if(shouldEnd)
+	if(m_file.is_open()){
+		for(ssize_t i = 0; i < num_chunks; i++){
+			ssize_t data_size = 0;
+			// Clear out the data
+			memset(data, '\0', sizeof(data));
+			ssize_t file_pos = m_file.tellg();
+			// There is no longer a fixed chunk of data left
+			if(file_pos + PACKET_SIZE > m_bytes){
+				// Get the remaining bytes
+				ssize_t remaining = m_bytes - m_file.tellg();
+				m_file.read(data, remaining);
+				data_size = remaining;
+				shouldEnd = true;
+			} else {
+				// Read fixed chunks
+				m_file.read(data, PACKET_SIZE);
+				data_size = PACKET_SIZE;
+			}
+			// Create a packet based on data
+			TCP_Packet packet(m_nextSeq, 0, m_cwnd*PACKET_DATA_SIZE, 0, 0, 0);
+			packet.setData(data, data_size);
+			m_filePackets.push_back(packet);
+			// Set the next sequence
+			m_nextSeq = (m_nextSeq + data_size) % MAX_SEQ;
+			// If we just grabbed the remaining chunk, we're done with data
+			if(shouldEnd)
+				m_file.close();
 			break;
+		}
+		return true;
 	}
-	return true;
+	return false;
 }
 
 bool TCP_Server::testWrite() {
@@ -214,19 +219,20 @@ ssize_t TCP_Server::removeAcked(){
 	return i;
 }
 
-bool TCP_Server::sendNextPacket(ssize_t pos) {
-	if (m_filePackets.at(pos).isSent()) {
-		return false;
-	}
+bool TCP_Server::sendNextPacket(ssize_t pos, bool resend) {
 	// next packet is within window and does not exceed the file
-	else if(pos < m_cwnd && pos < m_filePackets.size()){
+	if(pos < m_cwnd){
 		// Only send the variable packet length
 		ssize_t packet_size = m_filePackets.at(pos).getLength();
 		if(!sendData(m_filePackets.at(pos).encode(), packet_size)){
 			return false;
 		}
-		fprintf(stdout, "Sending packet %d\n", m_filePackets.at(pos).getHeader().fields[SEQ]);
-		m_filePackets.at(pos).setSent();
+		if(resend) { 
+			fprintf(stdout, "Sending packet %d Retransmission\n", m_filePackets.at(pos).getHeader().fields[SEQ]);
+		} else {
+			fprintf(stdout, "Sending packet %d\n", m_filePackets.at(pos).getHeader().fields[SEQ]);
+			m_filePackets.at(pos).setSent();
+		}
 		return true;
 	}
 	// either next packet is out of window range or last packet has been sent
@@ -242,10 +248,18 @@ bool TCP_Server::sendFile() {
 		ssize_t win_size = m_filePackets.size();
 		// Send everything in the current window
 		for(ssize_t i = 0; i < win_size; i++){
-            std::cout << "SEQ: " << m_filePackets.at(i).getHeader().fields[SEQ] << std::endl;
 			if(!m_filePackets.at(i).isAcked()){
-				// Send the packet if it isn't acked
-				sendNextPacket(i);
+				if(m_filePackets.at(i).isSent()){
+					// Retransmission - if its been sent and timed out
+					if(m_filePackets.at(i).hasTimedOut())
+						sendNextPacket(i, true);
+					cout << "Enter IF" << endl;
+				} else {
+					// Normal sent - Start the timer after the send
+					cout << "Enter else" << endl;
+					sendNextPacket(i, false);
+					m_filePackets.at(i).startTimer();
+				}
 			}
 		}
 		// Wait to receive data containing ack
@@ -258,56 +272,59 @@ bool TCP_Server::sendFile() {
 		m_cwnd++;
 		// If we just received an Ack for one of the first packets
 		// We can move our window forward to the right
+		cout << "Forward: " << move_forward << endl;
+		cout << "Buffer size: " << m_filePackets.size() << endl;
+		//if(m_cwnd > m_filePackets.size()){ cerr << "VBHEFOVBEAIRBVQEIRV" << endl; }
 		if(move_forward > 0){
 			// Grab as much as we can
 			grabChunk(m_cwnd - m_filePackets.size());
 		}
 	}
+	// TODO: Change timeout
+	setTimeout(0, RTO, 1);
+
+	// Send FIN
+	m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+	fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+	m_packet = new TCP_Packet(m_nextSeq, m_baseSeq, PACKET_SIZE, 0, 0, 1);
+	sendData(m_packet->encode());
+
+	// Retransmit FIN if timeout
+	while(!receiveData()){
+		fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+		sendData(m_packet->encode());
+	}
+	delete m_packet;
+
+	m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
+
+	// Receive FIN/ACK from client
+	m_packet = new TCP_Packet(m_recvBuffer);
+	uint16_t seq = m_packet->getHeader().fields[SEQ];
+	fprintf(stdout, "Receiving packet %hu\n", ack);
+	delete m_packet;
+
+	// Send ACK
+	m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+	fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+	m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 0, 0, 1);
+	sendData(m_packet->encode());
+
+	// Timed Wait
+	while(1){
 		// TODO: Change timeout
-		setTimeout(0, RTO, 1);
+		setTimeout(0, RTO, 0);
 
-		// Send FIN
-		m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-		fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
-		m_packet = new TCP_Packet(m_nextSeq, m_baseSeq, PACKET_SIZE, 0, 0, 1);
-		sendData(m_packet->encode());
-
-		// Retransmit FIN if timeout
-		while(!receiveData()){
-			fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
-			sendData(m_packet->encode());
-		}
-		delete m_packet;
-
-		m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
-
-		// Receive FIN/ACK from client
-		m_packet = new TCP_Packet(m_recvBuffer);
-		uint16_t seq = m_packet->getHeader().fields[SEQ];
-		fprintf(stdout, "Receiving packet %hu\n", ack);
-		delete m_packet;
-
-		// Send ACK
-		m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-		fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
-		m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 0, 0, 1);
-		sendData(m_packet->encode());
-
-		// Timed Wait
-		while(1){
-			// TODO: Change timeout
-			setTimeout(0, RTO, 0);
-
-			// Check if the timer successfully finishes (no more data was received)
-			if(!receiveData()){
-				break;
-			}
-
-			fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
-			sendData(m_packet->encode());
+		// Check if the timer successfully finishes (no more data was received)
+		if(!receiveData()){
+			break;
 		}
 
-		return true;
+		fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+		sendData(m_packet->encode());
+	}
+
+	return true;
 }
 /*uint16_t ack;
   while (m_basePacket < m_cwnd) {

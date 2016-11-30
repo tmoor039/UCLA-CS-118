@@ -92,7 +92,7 @@ public:
 	ssize_t removeAcked();
 
     // send packet corresponding to m_nextSeq if it is within send window
-    bool sendNextPacket(ssize_t pos);
+    bool sendNextPacket(ssize_t pos, bool resend);
 
     // call break_file before using this function
     bool sendFile();
