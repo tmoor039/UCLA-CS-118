@@ -14,7 +14,6 @@
 
 // Abstract base TCP class
 class TCP {
-
 protected:
 	uint16_t m_port;
 	TCP_Packet* m_packet;
@@ -44,7 +43,7 @@ public:
 };
 
 // TCP Server
-class TCP_Server: TCP {
+class TCP_Server: public TCP {
 	// File name
 	std::string m_filename;
 	// File Stream
@@ -77,6 +76,7 @@ class TCP_Server: TCP {
     
 public:
 	TCP_Server(uint16_t port, std::string filename);
+	~TCP_Server();
 
 	bool handshake() override;
 	bool sendData(uint8_t* data, ssize_t data_size = MSS) override;
@@ -120,12 +120,12 @@ public:
 };
 
 // TCP Client
-class TCP_Client: TCP {
+class TCP_Client: public TCP {
 	std::string m_serverHost;
 	struct sockaddr_in m_serverInfo;
 	socklen_t m_serverLen = sizeof(m_serverInfo);
 	int m_sockFD;
-    uint16_t m_expected_seq;
+	uint16_t m_expected_seq;
 
 public:
 	TCP_Client(std::string serverHost, uint16_t port);

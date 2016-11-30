@@ -45,9 +45,9 @@ TCP_Server::TCP_Server(uint16_t port, string filename)
     	m_status = false;
     }
     // Get length of file while restoring file pointer state
-    m_file.seekg(0, file.end);
-    m_bytes = file.tellg();
-    file.seekg(0, file.beg);
+    m_file.seekg(0, m_file.end);
+    m_bytes = m_file.tellg();
+    m_file.seekg(0, m_file.beg);
     
     // start with slow-start
     m_CCMode = SS;
@@ -156,8 +156,9 @@ bool TCP_Server::grabChunk(ssize_t num_chunks){
 		ssize_t data_size = 0;
 		// Clear out the data
 		memset(data, '\0', sizeof(data));
+		ssize_t file_pos = m_file.tellg();
 		// There is no longer a fixed chunk of data left
-		if(m_file.tellg() + PACKET_SIZE > m_bytes){
+		if(file_pos + PACKET_SIZE > m_bytes){
 			// Get the remaining bytes
 			ssize_t remaining = m_bytes - m_file.tellg();
 			m_file.read(data, remaining);
@@ -200,6 +201,7 @@ bool TCP_Server::testWrite() {
 }
 
 ssize_t TCP_Server::removeAcked(){
+	// Use i to count the number of elements popped
 	ssize_t i = 0;
 	// Pop all the front ACKed Packets
 	while(m_filePackets.at(0).isAcked()){
@@ -231,7 +233,7 @@ bool TCP_Server::sendNextPacket() {
 
 bool TCP_Server::sendFile() {
 	uint16_t ack;
-	while (m_basePacket < nPackets) {
+	while (m_basePacket < m_cwnd) {
 		int oldBasePacket = m_basePacket;
 
 		// if next packet is not within window, wait for window to shift right
@@ -260,7 +262,7 @@ bool TCP_Server::sendFile() {
 				// move window forward
 				m_basePacket++;
 
-				if (m_basePacket >= nPackets) {
+				if (m_basePacket >= m_cwnd) {
 					// out of bounds
 					break;
 				}
@@ -281,8 +283,7 @@ bool TCP_Server::sendFile() {
 		}
 
 		// repeatedly send next packet until we hit the end of window.
-		while (m_nextPacket < m_basePacket + m_cwnd 
-				&& m_nextPacket < nPackets) {
+		while (m_nextPacket < m_basePacket + m_cwnd) {
 			fprintf(stdout, "Sending packet %d\n", 
 					m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
 			bool sent = sendNextPacket();
