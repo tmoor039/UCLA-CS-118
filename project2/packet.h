@@ -61,7 +61,7 @@ public:
 
   // Mutators
   bool setData(char* data, int data_size = PACKET_SIZE);
-  void startTimer() { gettimeofday(&m_time_sent, NULL); }
+  void startTimer() { gettimeofday(&m_time_sent, nullptr); }
   void setAcked() { m_acked = true; }
   void setSent() { m_sent = true; }
 };

@@ -38,7 +38,7 @@ TCP_Packet::~TCP_Packet(){
 bool TCP_Packet::hasTimedOut(){
 	// Get the current time and a place to store the diff
 	struct timeval diff, now;
-	gettimeofday(&now, NULL);
+	gettimeofday(&now, nullptr);
 	timersub(&m_time_sent, &now, &diff);
 	// If the difference is > 500 ms then we timed out
 	if((diff.tv_sec*1000) + (diff.tv_usec/1000) > RTO){

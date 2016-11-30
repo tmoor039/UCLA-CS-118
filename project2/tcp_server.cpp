@@ -4,6 +4,7 @@
 #include <time.h>
 #include "globals.h"
 #include <cmath>
+#include <iterator>
 
 using namespace std;
 
@@ -241,7 +242,7 @@ bool TCP_Server::sendNextPacket(ssize_t pos, bool resend) {
 
 bool TCP_Server::sendFile() {
 	// Get the very first chunk
-	uint16_t ack;
+	uint16_t ack = 0;
 	grabChunk();
 	while(!m_filePackets.empty()){
 		// Window size based on stored packets
@@ -326,72 +327,6 @@ bool TCP_Server::sendFile() {
 
 	return true;
 }
-/*uint16_t ack;
-  while (m_basePacket < m_cwnd) {
-  int oldBasePacket = m_basePacket;
-
-// if next packet is not within window, wait for window to shift right
-while (m_nextPacket >= m_basePacket + m_cwnd) {
-
-std::cout << "waiting to receive first ack\n";
-
-// wait to receive first acknowledgement packet
-while (!receiveData()) {
-continue;
-}
-
-std::cout << "received first packet\n";
-ack = receiveAck();
-fprintf(stdout, "Receiving packet %d\n", ack);
-
-while (receiveData()) {
-std::cout << "receiving more acks\n";
-// mark corresponding file packet as acked
-ack = receiveAck();
-fprintf(stdout, "Receiving packet %d\n", ack);
-}
-
-// move window to the first unacked packet 
-while (m_filePackets.at(m_basePacket).isAcked()) {
-// move window forward
-m_basePacket++;
-
-if (m_basePacket >= m_cwnd) {
-// out of bounds
-break;
-}
-
-// this calculation is necessary for seq2index()
-m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-}
-
-// if window has been moved, advance to the sending step
-if (oldBasePacket != m_basePacket) {
-std::cout << "window has moved; about to send more packets\n";
-break;
-}
-else { 
-// continue to wait for window to shift
-continue;
-}
-}
-
-// repeatedly send next packet until we hit the end of window.
-while (m_nextPacket < m_basePacket + m_cwnd) {
-fprintf(stdout, "Sending packet %d\n", 
-m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
-bool sent = sendNextPacket();
-if (!sent) {
-fprintf(stderr, "send error\n");
-return false;
-}
-else {
-m_nextPacket++;
-}
-}
-
-}*/
-
 
 uint16_t TCP_Server::receiveAck() {
 	TCP_Packet* ackPacket = new TCP_Packet(m_recvBuffer);
@@ -409,14 +344,6 @@ uint16_t TCP_Server::receiveAck() {
 }
 
 int TCP_Server::seq2index(uint16_t seq) {
-	/*int seqOffset = (seq - m_baseSeq);
-
-	// wrap-around case
-	if (seq < m_baseSeq) {
-	seqOffset = (MAX_SEQ - m_baseSeq) + seq;
-	}
-	int indexOffset = seqOffset / PACKET_DATA_SIZE;
-	return m_basePacket + indexOffset;*/
 	// Run a linear scan within the window to find corresponding
 	// packet to sequence number
 	ssize_t packet_buffer_size = m_filePackets.size();
