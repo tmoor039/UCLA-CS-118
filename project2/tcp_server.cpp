@@ -213,20 +213,19 @@ ssize_t TCP_Server::removeAcked(){
 	return i;
 }
 
-bool TCP_Server::sendNextPacket() {
-	if (m_filePackets.at(m_nextPacket).isSent()) {
+bool TCP_Server::sendNextPacket(ssize_t pos) {
+	if (m_filePackets.at(pos).isSent()) {
 		return false;
 	}
 	// next packet is within window and does not exceed the file
-	else if(m_nextPacket < m_basePacket + m_cwnd && m_nextPacket < m_filePackets.size()){
+	else if(pos < m_cwnd && pos < m_filePackets.size()){
 		// Only send the variable packet length
-		ssize_t packet_size = m_filePackets.at(m_nextPacket).getLength();
-		if(!sendData(m_filePackets.at(m_nextPacket).encode(), packet_size)){
+		ssize_t packet_size = m_filePackets.at(pos).getLength();
+		if(!sendData(m_filePackets.at(pos).encode(), packet_size)){
 			return false;
 		}
-		fprintf(stdout, "Sending packet %d\n", m_nextSeq);
-		m_filePackets.at(m_nextPacket).setSent();
-		m_nextPacket++;
+		fprintf(stdout, "Sending packet %d\n", m_filePackets.at(pos).getHeader().fields[SEQ]);
+		m_filePackets.at(pos).setSent();
 		return true;
 	}
 	// either next packet is out of window range or last packet has been sent
@@ -242,9 +241,10 @@ bool TCP_Server::sendFile() {
 		ssize_t win_size = m_filePackets.size();
 		// Send everything in the current window
 		for(ssize_t i = 0; i < win_size; i++){
+            std::cout << "SEQ: " << m_filePackets.at(i).getHeader().fields[SEQ] << std::endl;
 			if(!m_filePackets.at(i).isAcked()){
 				// Send the packet if it isn't acked
-				sendNextPacket();
+				sendNextPacket(i);
 			}
 		}
 		// Wait to receive data containing ack
@@ -386,7 +386,7 @@ uint16_t TCP_Server::receiveAck() {
 		perror("Couldn't find packet");
 		exit(1);
 	}
-	m_filePackets.at(packet-1).setAcked();
+	m_filePackets.at(packet).setAcked();
 	return ack;
 }
 
@@ -403,7 +403,7 @@ int TCP_Server::seq2index(uint16_t seq) {
 	// packet to sequence number
 	ssize_t packet_buffer_size = m_filePackets.size();
 	for(ssize_t i = 0; i < packet_buffer_size; i++){
-		if(m_filePackets.at(i).getHeader().fields[SEQ] == seq){
+		if((m_filePackets.at(i).getHeader().fields[SEQ] + m_filePackets.at(i).getData()->size()) % MAX_SEQ == seq){
 			return i;
 		}
 	}
