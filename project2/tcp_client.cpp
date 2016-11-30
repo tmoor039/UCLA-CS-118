@@ -83,44 +83,8 @@ bool TCP_Client::receiveFile(){
             uint16_t flags = m_packet->getHeader().fields[FLAGS];
             vector<uint8_t>* data = m_packet->getData();
             ssize_t data_size = data->size();
+            cout << m_expected_seq << endl;
 			fprintf(stdout, "Receiving packet %hu\n", seq);
-
-            // If an expected packet was received
-            if (seq == m_expected_seq) {
-
-                // Write the data to the file
-			    for(int i = 0; i < data_size; i++){
-				    outputFile << data->at(i);
-			    }
-			    delete m_packet;
-
-                // Check if there are more correctly-ordered packets in the buffer
-                m_expected_seq = (m_expected_seq + m_packet->getLength() - HEADER_SIZE) % MAX_SEQ;
-                while (packet_buffer.size() > 0 && m_expected_seq == packet_buffer[0]->getHeader().fields[SEQ]){
-                    m_expected_seq = (m_expected_seq + packet_buffer[0]->getLength() - HEADER_SIZE) % MAX_SEQ;
-                    data = packet_buffer[0]->getData();
-			        for(int i = 0; i < data_size; i++){
-				        outputFile << data->at(i);
-			        }
-                    delete packet_buffer[0];
-                    packet_buffer.erase(packet_buffer.begin());
-                }
-            }
-
-            // If an unexpected packet was received, add it to the buffer in sequence order
-            else {
-                bool saved = false;
-                for (vector<TCP_Packet*>::iterator it = packet_buffer.begin(); it != packet_buffer.end(); it++){
-                    TCP_Packet* current_packet = *it;
-                    if (seq < current_packet->getHeader().fields[SEQ]) {
-                        saved = true;
-                        packet_buffer.insert(it, m_packet);
-                    }
-                }
-                if (!saved) {
-                    packet_buffer.push_back(m_packet);
-                }
-            }
 
 			// Detect FIN bit
 			if (0x0001 & flags) {
@@ -141,6 +105,40 @@ bool TCP_Client::receiveFile(){
 				outputFile.close();
 				return true;
 			}
+
+            // If an expected packet was received
+            else if (seq == m_expected_seq) {
+
+                // Write the data to the file
+			    for(int i = 0; i < data_size; i++){
+				    outputFile << data->at(i);
+			    }
+                m_expected_seq = (m_expected_seq + m_packet->getLength() - HEADER_SIZE) % MAX_SEQ;
+			    delete m_packet;
+
+                // Check if there are more correctly-ordered packets in the buffer
+                bool found = true;
+                while (found){
+                    found = false;
+                    for (int i = 0; i < packet_buffer.size(); i++) {
+                        if(m_expected_seq == packet_buffer[i]->getHeader().fields[SEQ]) {
+                            found = true;
+                            m_expected_seq = (m_expected_seq + packet_buffer[i]->getLength() - HEADER_SIZE) % MAX_SEQ;
+                            data = packet_buffer[i]->getData();
+                            for(int i = 0; i < data_size; i++){
+                                outputFile << data->at(i);
+                            }
+                            delete packet_buffer[i];
+                            packet_buffer.erase(packet_buffer.begin() + i);
+                        }
+                    }
+                }
+            }
+
+            // If an unexpected packet was received, add it to the buffer
+            else {
+                packet_buffer.push_back(m_packet);
+            }
 
 			// Send the ACK
 			fprintf(stdout, "Sending packet %d\n", (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ);
