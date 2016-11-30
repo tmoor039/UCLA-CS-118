@@ -5,3 +5,4 @@ server
 *.data
 *.mp3
 *.dat
+~*
