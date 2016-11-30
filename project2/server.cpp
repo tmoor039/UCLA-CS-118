@@ -28,8 +28,8 @@ int main(int argc, char* argv[]) {
 	string filename = argv[2];
 
 	TCP_Server tcpServer(port, filename);
-	if(tcpServer.getStatus()){
-		fprintf(stderr, "Server setup failedi\n");
+	if(!tcpServer.getStatus()){
+		fprintf(stderr, "Server setup failed\n");
 		exit(1);
 	}
 
