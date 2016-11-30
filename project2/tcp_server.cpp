@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "globals.h"
+#include <cmath>
 
 using namespace std;
 
@@ -147,7 +148,7 @@ bool TCP_Server::grabChunk(ssize_t num_chunks){
     // Create temp buffer to hold at most PACKET_SIZE bytes
     char data[PACKET_SIZE];
     // Total number of chunks
-	int tot_chunks = m_bytes/PACKET_SIZE;
+	int tot_chunks = ceil((float)m_bytes/PACKET_SIZE);
 	if(num_chunks > tot_chunks){
 		return false;
 	}
@@ -236,7 +237,7 @@ bool TCP_Server::sendFile() {
 	// Get the very first chunk
 	uint16_t ack;
 	grabChunk();
-	while(true){
+	while(!m_filePackets.empty()){
 		// Window size based on stored packets
 		ssize_t win_size = m_filePackets.size();
 		// Send everything in the current window
