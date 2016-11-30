@@ -224,7 +224,9 @@ bool TCP_Server::sendNextPacket() {
 		if(!sendData(m_filePackets.at(m_nextPacket).encode(), packet_size)){
 			return false;
 		}
+		fprintf(stdout, "Sending packet %d\n", m_nextSeq);
 		m_filePackets.at(m_nextPacket).setSent();
+		m_nextPacket++;
 		return true;
 	}
 	// either next packet is out of window range or last packet has been sent
@@ -232,118 +234,146 @@ bool TCP_Server::sendNextPacket() {
 }
 
 bool TCP_Server::sendFile() {
+	// Get the very first chunk
 	uint16_t ack;
-	while (m_basePacket < m_cwnd) {
-		int oldBasePacket = m_basePacket;
-
-		// if next packet is not within window, wait for window to shift right
-		while (m_nextPacket >= m_basePacket + m_cwnd) {
-
-			std::cout << "waiting to receive first ack\n";
-
-			// wait to receive first acknowledgement packet
-			while (!receiveData()) {
-				continue;
+	grabChunk();
+	while(true){
+		// Window size based on stored packets
+		ssize_t win_size = m_filePackets.size();
+		// Send everything in the current window
+		for(ssize_t i = 0; i < win_size; i++){
+			if(!m_filePackets.at(i).isAcked()){
+				// Send the packet if it isn't acked
+				sendNextPacket();
 			}
+		}
+		// Wait to receive data containing ack
+		while(!receiveData()) { continue; }
+		// Mark the packet as acked
+		ack = receiveAck();
+		fprintf(stdout, "Receiving packet %d\n", ack);
+		ssize_t move_forward = removeAcked();
+		// Based on congestion window, update cwnd
+		m_cwnd++;
+		// If we just received an Ack for one of the first packets
+		// We can move our window forward to the right
+		if(move_forward > 0){
+			// Grab as much as we can
+			grabChunk(m_cwnd - m_filePackets.size());
+		}
+	}
+		// TODO: Change timeout
+		setTimeout(0, RTO, 1);
 
-			std::cout << "received first packet\n";
-			ack = receiveAck();
-			fprintf(stdout, "Receiving packet %d\n", ack);
+		// Send FIN
+		m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+		fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+		m_packet = new TCP_Packet(m_nextSeq, m_baseSeq, PACKET_SIZE, 0, 0, 1);
+		sendData(m_packet->encode());
 
-			while (receiveData()) {
-				std::cout << "receiving more acks\n";
-				// mark corresponding file packet as acked
-				ack = receiveAck();
-				fprintf(stdout, "Receiving packet %d\n", ack);
-			}
+		// Retransmit FIN if timeout
+		while(!receiveData()){
+			fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+			sendData(m_packet->encode());
+		}
+		delete m_packet;
 
-			// move window to the first unacked packet 
-			while (m_filePackets.at(m_basePacket).isAcked()) {
-				// move window forward
-				m_basePacket++;
+		m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
 
-				if (m_basePacket >= m_cwnd) {
-					// out of bounds
-					break;
-				}
+		// Receive FIN/ACK from client
+		m_packet = new TCP_Packet(m_recvBuffer);
+		uint16_t seq = m_packet->getHeader().fields[SEQ];
+		fprintf(stdout, "Receiving packet %hu\n", ack);
+		delete m_packet;
 
-				// this calculation is necessary for seq2index()
-				m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-			}
+		// Send ACK
+		m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+		fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+		m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 0, 0, 1);
+		sendData(m_packet->encode());
 
-			// if window has been moved, advance to the sending step
-			if (oldBasePacket != m_basePacket) {
-				std::cout << "window has moved; about to send more packets\n";
+		// Timed Wait
+		while(1){
+			// TODO: Change timeout
+			setTimeout(0, RTO, 0);
+
+			// Check if the timer successfully finishes (no more data was received)
+			if(!receiveData()){
 				break;
 			}
-			else { 
-				// continue to wait for window to shift
-				continue;
-			}
+
+			fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
+			sendData(m_packet->encode());
 		}
 
-		// repeatedly send next packet until we hit the end of window.
-		while (m_nextPacket < m_basePacket + m_cwnd) {
-			fprintf(stdout, "Sending packet %d\n", 
-					m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
-			bool sent = sendNextPacket();
-			if (!sent) {
-				fprintf(stderr, "send error\n");
-				return false;
-			}
-			else {
-				m_nextPacket++;
-			}
-		}
-
-	}
-
-	// TODO: Change timeout
-	setTimeout(0, RTO, 1);
-
-	// Send FIN
-	m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-	fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
-	m_packet = new TCP_Packet(m_nextSeq, m_baseSeq, PACKET_SIZE, 0, 0, 1);
-	sendData(m_packet->encode());
-
-	// Retransmit FIN if timeout
-	while(!receiveData()){
-		fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
-		sendData(m_packet->encode());
-	}
-	delete m_packet;
-
-	m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
-
-	// Receive FIN/ACK from client
-	m_packet = new TCP_Packet(m_recvBuffer);
-	uint16_t seq = m_packet->getHeader().fields[SEQ];
-	fprintf(stdout, "Receiving packet %hu\n", ack);
-	delete m_packet;
-
-	// Send ACK
-	m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-	fprintf(stdout, "Sending packet %d %d %d FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
-	m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 0, 0, 1);
-	sendData(m_packet->encode());
-
-	// Timed Wait
-	while(1){
-		// TODO: Change timeout
-		setTimeout(0, RTO, 0);
-
-		// Check if the timer successfully finishes (no more data was received)
-		if(!receiveData()){
-			break;
-		}
-
-		fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
-		sendData(m_packet->encode());
-	}
-
-	return true;
+		return true;
 }
+/*uint16_t ack;
+  while (m_basePacket < m_cwnd) {
+  int oldBasePacket = m_basePacket;
+
+// if next packet is not within window, wait for window to shift right
+while (m_nextPacket >= m_basePacket + m_cwnd) {
+
+std::cout << "waiting to receive first ack\n";
+
+// wait to receive first acknowledgement packet
+while (!receiveData()) {
+continue;
+}
+
+std::cout << "received first packet\n";
+ack = receiveAck();
+fprintf(stdout, "Receiving packet %d\n", ack);
+
+while (receiveData()) {
+std::cout << "receiving more acks\n";
+// mark corresponding file packet as acked
+ack = receiveAck();
+fprintf(stdout, "Receiving packet %d\n", ack);
+}
+
+// move window to the first unacked packet 
+while (m_filePackets.at(m_basePacket).isAcked()) {
+// move window forward
+m_basePacket++;
+
+if (m_basePacket >= m_cwnd) {
+// out of bounds
+break;
+}
+
+// this calculation is necessary for seq2index()
+m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
+}
+
+// if window has been moved, advance to the sending step
+if (oldBasePacket != m_basePacket) {
+std::cout << "window has moved; about to send more packets\n";
+break;
+}
+else { 
+// continue to wait for window to shift
+continue;
+}
+}
+
+// repeatedly send next packet until we hit the end of window.
+while (m_nextPacket < m_basePacket + m_cwnd) {
+fprintf(stdout, "Sending packet %d\n", 
+m_filePackets.at(m_nextPacket).getHeader().fields[SEQ]);
+bool sent = sendNextPacket();
+if (!sent) {
+fprintf(stderr, "send error\n");
+return false;
+}
+else {
+m_nextPacket++;
+}
+}
+
+}*/
+
 
 uint16_t TCP_Server::receiveAck() {
 	TCP_Packet* ackPacket = new TCP_Packet(m_recvBuffer);
