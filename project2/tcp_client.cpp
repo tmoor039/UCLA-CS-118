@@ -83,35 +83,50 @@ bool TCP_Client::receiveFile(){
             uint16_t flags = m_packet->getHeader().fields[FLAGS];
             vector<uint8_t>* data = m_packet->getData();
             ssize_t data_size = data->size();
-			for(int i = 0; i < data_size; i++){
-				outputFile << data->at(i);
-			}
 			fprintf(stdout, "Receiving packet %hu\n", seq);
-			delete m_packet;
 
-            // If an expected packet was received, check if there are more correctly-ordered packets in the buffer
+            // If an expected packet was received
             if (seq == m_expected_seq) {
-                m_expected_seq = (m_expected_seq + 1) % MAX_SEQ;
+
+                // Write the data to the file
+			    for(int i = 0; i < data_size; i++){
+				    outputFile << data->at(i);
+			    }
+			    delete m_packet;
+
+                // Check if there are more correctly-ordered packets in the buffer
+                m_expected_seq = (m_expected_seq + m_packet->getLength() - HEADER_SIZE) % MAX_SEQ;
                 while (packet_buffer.size() > 0 && m_expected_seq == packet_buffer[0]->getHeader().fields[SEQ]){
+                    m_expected_seq = (m_expected_seq + packet_buffer[0]->getLength() - HEADER_SIZE) % MAX_SEQ;
+                    data = packet_buffer[0]->getData();
+			        for(int i = 0; i < data_size; i++){
+				        outputFile << data->at(i);
+			        }
+                    delete packet_buffer[0];
                     packet_buffer.erase(packet_buffer.begin());
                 }
             }
 
             // If an unexpected packet was received, add it to the buffer in sequence order
             else {
+                bool saved = false;
                 for (vector<TCP_Packet*>::iterator it = packet_buffer.begin(); it != packet_buffer.end(); it++){
                     TCP_Packet* current_packet = *it;
-                    if (seq <= current_packet->getHeader().fields[SEQ] || it == packet_buffer.end() - 1) {
+                    if (seq < current_packet->getHeader().fields[SEQ]) {
+                        saved = true;
                         packet_buffer.insert(it, m_packet);
                     }
+                }
+                if (!saved) {
+                    packet_buffer.push_back(m_packet);
                 }
             }
 
 			// Detect FIN bit
 			if (0x0001 & flags) {
 				// Send the FIN/ACK
-				fprintf(stdout, "Sending packet %d FIN\n", seq + m_recvSize - HEADER_SIZE);
-				m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 1);
+				fprintf(stdout, "Sending packet %d FIN\n", (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ);
+				m_packet = new TCP_Packet(ack, (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ, PACKET_SIZE, 1, 0, 1);
 				sendData(m_packet->encode());
 				nPackets++;
 
@@ -119,7 +134,7 @@ bool TCP_Client::receiveFile(){
 
 				// Retransmit in case of timeout
 				while(!receiveData()){
-					fprintf(stdout, "Sending packet %d Retransmission FIN\n", seq + m_recvSize - HEADER_SIZE);
+					fprintf(stdout, "Sending packet %d Retransmission FIN\n", (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ);
 					sendData(m_packet->encode());
 				}
 
@@ -128,8 +143,8 @@ bool TCP_Client::receiveFile(){
 			}
 
 			// Send the ACK
-			fprintf(stdout, "Sending packet %d\n", seq + m_recvSize - HEADER_SIZE);
-			m_packet = new TCP_Packet(ack, seq + m_recvSize - HEADER_SIZE, PACKET_SIZE, 1, 0, 0);
+			fprintf(stdout, "Sending packet %d\n", (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ);
+			m_packet = new TCP_Packet(ack, (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ, PACKET_SIZE, 1, 0, 0);
 			sendData(m_packet->encode());
 			nPackets++;
 		}
