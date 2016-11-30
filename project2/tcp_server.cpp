@@ -23,7 +23,7 @@ TCP_Server::TCP_Server(uint16_t port, string filename)
     // Set up server address information
     m_serverInfo.sin_family = AF_INET;
     m_serverInfo.sin_port = htons(port);
-    // Allow to bind to localhost only - Change to INADDR_ANY for any address
+    // Allow to bind to localhost only - Change to INADDR_ANY for any address - ASK TA
     m_serverInfo.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     // Attempt binding
@@ -180,9 +180,10 @@ bool TCP_Server::grabChunk(ssize_t num_chunks){
 			// Set the next sequence
 			m_nextSeq = (m_nextSeq + data_size) % MAX_SEQ;
 			// If we just grabbed the remaining chunk, we're done with data
-			if(shouldEnd)
+			if(shouldEnd){
 				m_file.close();
-			break;
+				break;
+			}
 		}
 		return true;
 	}
@@ -254,10 +255,8 @@ bool TCP_Server::sendFile() {
 					// Retransmission - if its been sent and timed out
 					if(m_filePackets.at(i).hasTimedOut())
 						sendNextPacket(i, true);
-					cout << "Enter IF" << endl;
 				} else {
 					// Normal sent - Start the timer after the send
-					cout << "Enter else" << endl;
 					sendNextPacket(i, false);
 					m_filePackets.at(i).startTimer();
 				}
@@ -273,12 +272,10 @@ bool TCP_Server::sendFile() {
 		m_cwnd++;
 		// If we just received an Ack for one of the first packets
 		// We can move our window forward to the right
-		cout << "Forward: " << move_forward << endl;
-		cout << "Buffer size: " << m_filePackets.size() << endl;
-		//if(m_cwnd > m_filePackets.size()){ cerr << "VBHEFOVBEAIRBVQEIRV" << endl; }
 		if(move_forward > 0){
 			// Grab as much as we can
-			grabChunk(m_cwnd - m_filePackets.size());
+		//	grabChunk(m_cwnd - m_filePackets.size());
+			grabChunk();
 		}
 	}
 	// TODO: Change timeout
