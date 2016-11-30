@@ -269,13 +269,14 @@ bool TCP_Server::sendFile() {
 		fprintf(stdout, "Receiving packet %d\n", ack);
 		ssize_t move_forward = removeAcked();
 		// Based on congestion window, update cwnd
-		m_cwnd++;
+		if(m_cwnd <= 15){
+			m_cwnd++;
+		}
 		// If we just received an Ack for one of the first packets
 		// We can move our window forward to the right
 		if(move_forward > 0){
 			// Grab as much as we can
-		//	grabChunk(m_cwnd - m_filePackets.size());
-			grabChunk();
+			grabChunk(m_cwnd - m_filePackets.size());
 		}
 	}
 	// TODO: Change timeout
