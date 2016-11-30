@@ -27,18 +27,16 @@ int main(int argc, char* argv[]) {
 	}
 	string filename = argv[2];
 
-	TCP_Server tcpServer(port);
-	tcpServer.setFilename(filename);
+	TCP_Server tcpServer(port, filename);
+	if(tcpServer.getStatus()){
+		fprintf(stderr, "Server setup failedi\n");
+		exit(1);
+	}
 
 	if (!tcpServer.handshake()){
 		fprintf(stderr, "The TCP handshake failed\n");
 		exit(1);
 	}
-
-    //// For testing - REMOVE
-    //fprintf(stdout, "END OF HANDSHAKE\n");
-
-  tcpServer.breakFile();
 
     // Testing breakfile
     if (tcpServer.testWrite() == false) {

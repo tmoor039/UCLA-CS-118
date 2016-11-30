@@ -3,6 +3,7 @@
 
 #include "globals.h"
 #include "packet.h"
+#include <fstream>
 #include <string.h>
 #include <string>
 #include <sys/types.h>
@@ -44,46 +45,51 @@ public:
 
 // TCP Server
 class TCP_Server: TCP {
+	// File name
 	std::string m_filename;
+	// File Stream
+	std::ifstream m_file;
+	// Socket information
 	struct sockaddr_in m_serverInfo, m_clientInfo;
 	socklen_t m_cliLen = sizeof(m_clientInfo);
+	// Server Socket FD
 	int m_sockFD;
+	// CWND worth of packets from the file
     std::vector<TCP_Packet> m_filePackets;
     // index for the oldest packet that has not yet been acked.
     int m_basePacket;
-
     // index for the next packet within the window that is ready to be sent.
     int m_nextPacket;
-
     // in units of PACKET_SIZE
     int m_cwnd;
-
     // The sequence number of the first usable but not yet sent packet.
     // In units of bytes.
     uint16_t m_nextSeq;
-
     // The sequence number of the first packet sent but not yet acked.
     // In units of bytes.
     uint16_t m_baseSeq;
-
     // The size of the file
     ssize_t m_bytes;
-    
     CCMode m_CCMode;
 
     // Keeps track of the CC algorithm and the congestion window.
     // CongestionControl* CC; 
     
 public:
-	TCP_Server(uint16_t port);
+	TCP_Server(uint16_t port, std::string filename);
 
 	bool handshake() override;
 	bool sendData(uint8_t* data, ssize_t data_size = MSS) override;
 	bool receiveData() override;
 	bool setTimeout(float sec, float usec, bool flag) override;
 
-    // Break file into packets. The file packets are in m_filePackets.
-	bool breakFile();
+	// Grab chunks from the file and push to m_filePackets.
+	// By default only get 1 chunk
+	bool grabChunk(ssize_t num_chunks=1);
+	
+	// Remove acked packets from m_filePackets and return number of removed
+	// packets
+	ssize_t removeAcked();
 
     // send packet corresponding to m_nextSeq if it is within send window
     bool sendNextPacket();
