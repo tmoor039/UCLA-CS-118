@@ -120,7 +120,7 @@ bool TCP_Client::receiveFile(){
                 bool found = true;
                 while (found){
                     found = false;
-                    for (ssize_t i = 0; i < packet_buffer.size(); i++) {
+                    for (size_t i = 0; i < packet_buffer.size(); i++) {
                         if(m_expected_seq == packet_buffer[i]->getHeader().fields[SEQ]) {
                             found = true;
                             m_expected_seq = (m_expected_seq + packet_buffer[i]->getLength() - HEADER_SIZE) % MAX_SEQ;
