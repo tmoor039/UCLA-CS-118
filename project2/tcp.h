@@ -69,17 +69,22 @@ class TCP_Server: public TCP {
     uint16_t m_baseSeq;
     // The size of the file
     ssize_t m_bytes;
-    // Congestion Control as per TCP Tahoe
-    struct CongestionControl {
-		// Run the Slow Start Algorithm
-		void runSlowStart(int& window);
-		// Run the Congestion Avoidance Algorithm
-		void runCongestionAvoidance(int& window);
-		// Run the Fast Retransmit Algorithm
-		void runFastRetransmit(int& window);
-		// Congestion Control Mode
-		uint8_t m_curr_mode = SS;
-	} m_cc;
+    // Store the ssthresh of the window for the server
+    // Note that ssthresh is in bytes, and our m_cwnd is in number of packets
+    // Conversions are done in the functions
+    ssize_t m_ssthresh = SSTHRESH;
+    
+	// Current mode for the congestion control
+	uint8_t m_curr_mode = SS;
+	
+	// Private CongestionControl methods
+	// Run Slow Start Algorithm
+	void runSlowStart(TCP_Packet packet);
+
+	// Run Congestion Avoidance algorithm
+	// Return true if we want to Fast Retransmit
+	bool runCongestionAvoidance(TCP_Packet packet, bool lost);
+
 public:
 	TCP_Server(uint16_t port, std::string filename);
 	~TCP_Server();

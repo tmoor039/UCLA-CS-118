@@ -24,7 +24,9 @@ TCP_Server::TCP_Server(uint16_t port, string filename)
     m_serverInfo.sin_family = AF_INET;
     m_serverInfo.sin_port = htons(port);
     // Allow to bind to localhost only - Change to INADDR_ANY for any address - ASK TA
-    m_serverInfo.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    //m_serverInfo.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    // Accept to 0.0.0.0 which is generic for all NIC devices on machine
+    inet_pton(AF_INET, "0.0.0.0", &m_serverInfo.sin_addr.s_addr);
 
     // Attempt binding
     if(m_status){
@@ -264,11 +266,30 @@ bool TCP_Server::sendFile() {
 		// Mark the packet as acked
 		ack = receiveAck();
 		fprintf(stdout, "Receiving packet %d\n", ack);
-		ssize_t move_forward = removeAcked();
 		// Based on congestion window, update cwnd
-		if(m_cwnd <= 15){
+		/*if(m_cwnd <= 15){
 			m_cwnd++;
+		}*/
+		// Retrieve currently acked packet
+		int curr_index = seq2index(ack);
+		TCP_Packet just_acked = m_filePackets.at(seq2index(ack));
+		// Run the congestion control based on packet state
+		switch(m_curr_mode){
+			case SS: {
+				runSlowStart(just_acked);
+				break;
+			}
+			case CA: {
+				bool got_lost = (just_acked.hasTimedOut() || just_acked.gotThreeDups());
+				if(runCongestionAvoidance(just_acked, got_lost)){
+					sendNextPacket(curr_index, true);
+				}
+				break;
+			}
+			default:
+				break;
 		}
+		ssize_t move_forward = removeAcked();
 		// If we just received an Ack for one of the first packets
 		// We can move our window forward to the right
 		if(move_forward > 0){
@@ -352,19 +373,40 @@ int TCP_Server::seq2index(uint16_t seq) {
 }
 
 // Pre-Condition - mode is Slow Start
-void TCP_Server::CongestionControl::runSlowStart(int& window){
-	// Additive increase until ssthresh
-	if(window < SSTHRESH){
-		window++;
+void TCP_Server::runSlowStart(TCP_Packet packet){
+	// If the packet times out we reset back to 1
+	if(packet.hasTimedOut()){
+		m_cwnd = 1;
+		return;
+	}
+	// Additive increase for each packet until ssthresh
+	if(m_cwnd < (m_ssthresh/MIN_CWND)){
+		if(packet.isAcked()) { m_cwnd++; }
+	} else {
+		// If we go beyond SSTHRESH then go into Congestion Avoidance
+		m_curr_mode = CA;
 	}
 }
 // Pre-Condition - mode is Congestion Avoidance
-void TCP_Server::CongestionControl::runCongestionAvoidance(int& window){
-
-}
-// Pre-Condition - mode is Fast Retransmission
-void TCP_Server::CongestionControl::runFastRetransmit(int& window){
-
+bool TCP_Server::runCongestionAvoidance(TCP_Packet packet, bool lost){
+	// If we have a lost event - either through RTO or DUP - reset ssthresh
+	if(lost){
+		m_ssthresh = (m_cwnd*MIN_CWND)/2;
+	}
+	// If we have three duplicate Acks, then we reset cwnd and move to Fast Retransmit
+	if(packet.gotThreeDups()){
+		m_cwnd = (m_ssthresh/MIN_CWND);
+		return true;
+	}
+	// If the packet times out we reset back to 1 and go back to SS
+	else if(packet.hasTimedOut()){
+		m_cwnd = 1;
+		m_curr_mode = SS;
+		return false;
+	}
+	// Additive Increase for every w segments Acked
+	m_cwnd = m_cwnd + (1/m_cwnd);
+	return false;
 }
 
 uint16_t TCP_Server::index2seq(int index) {
