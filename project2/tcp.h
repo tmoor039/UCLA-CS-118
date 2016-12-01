@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <vector>
-#include "congestion_control.h"
+//#include "congestion_control.h"
 
 // Abstract base TCP class
 class TCP {
@@ -69,11 +69,17 @@ class TCP_Server: public TCP {
     uint16_t m_baseSeq;
     // The size of the file
     ssize_t m_bytes;
-    CCMode m_CCMode;
-
-    // Keeps track of the CC algorithm and the congestion window.
-    // CongestionControl* CC; 
-    
+    // Congestion Control as per TCP Tahoe
+    struct CongestionControl {
+		// Run the Slow Start Algorithm
+		void runSlowStart(int& window);
+		// Run the Congestion Avoidance Algorithm
+		void runCongestionAvoidance(int& window);
+		// Run the Fast Retransmit Algorithm
+		void runFastRetransmit(int& window);
+		// Congestion Control Mode
+		uint8_t m_curr_mode = SS;
+	} m_cc;
 public:
 	TCP_Server(uint16_t port, std::string filename);
 	~TCP_Server();
@@ -86,16 +92,16 @@ public:
 	// Grab chunks from the file and push to m_filePackets.
 	// By default only get 1 chunk
 	bool grabChunk(ssize_t num_chunks=1);
-	
+
 	// Remove acked packets from m_filePackets and return number of removed
 	// packets
 	ssize_t removeAcked();
 
-    // send packet corresponding to m_nextSeq if it is within send window
-    bool sendNextPacket(ssize_t pos, bool resend);
+	// send packet corresponding to m_nextSeq if it is within send window
+	bool sendNextPacket(ssize_t pos, bool resend);
 
-    // call break_file before using this function
-    bool sendFile();
+	// call break_file before using this function
+	bool sendFile();
 
 	// Accessors
 	int getSocketFD() const { return m_sockFD; }
@@ -103,20 +109,19 @@ public:
 
 	// Mutators
 	void setFilename(std::string filename) { m_filename = filename; }
-    void setCCMode(CCMode ccmode) { m_CCMode = ccmode; }
 
-    // returns index of the file packets based on sequence number
-    int seq2index(uint16_t seq);
+	// returns index of the file packets based on sequence number
+	int seq2index(uint16_t seq);
 
-    // returns sequence number based on index of file packets
-    uint16_t index2seq(int index);
+	// returns sequence number based on index of file packets
+	uint16_t index2seq(int index);
 
-    // Marks the corresponding file packet as marked and returns the ack.
-    // Call after reading data to receive buffer
-    uint16_t receiveAck();
-    
-    // Test function
-    bool testWrite();
+	// Marks the corresponding file packet as marked and returns the ack.
+	// Call after reading data to receive buffer
+	uint16_t receiveAck();
+
+	// Test function
+	bool testWrite();
 };
 
 // TCP Client
@@ -127,13 +132,13 @@ class TCP_Client: public TCP {
 	int m_sockFD;
 	uint16_t m_expected_seq;
 
-public:
+	public:
 	TCP_Client(std::string serverHost, uint16_t port);
 
 	bool handshake() override;
 	bool sendData(uint8_t* data, ssize_t data_size = MSS) override;
 	bool receiveData() override;
-    bool receiveFile();
+	bool receiveFile();
 	bool setTimeout(float sec, float usec, bool flag) override;
 
 	// Accessors

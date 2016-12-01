@@ -50,9 +50,6 @@ TCP_Server::TCP_Server(uint16_t port, string filename)
     m_file.seekg(0, m_file.end);
     m_bytes = m_file.tellg();
     m_file.seekg(0, m_file.beg);
-    
-    // start with slow-start
-    m_CCMode = SS;
 }
 TCP_Server::~TCP_Server(){
 	// Close file if it was left open
@@ -352,6 +349,22 @@ int TCP_Server::seq2index(uint16_t seq) {
 	}
 	// Couldn't find packet with given sequence number
 	return -1;
+}
+
+// Pre-Condition - mode is Slow Start
+void TCP_Server::CongestionControl::runSlowStart(int& window){
+	// Additive increase until ssthresh
+	if(window < SSTHRESH){
+		window++;
+	}
+}
+// Pre-Condition - mode is Congestion Avoidance
+void TCP_Server::CongestionControl::runCongestionAvoidance(int& window){
+
+}
+// Pre-Condition - mode is Fast Retransmission
+void TCP_Server::CongestionControl::runFastRetransmit(int& window){
+
 }
 
 uint16_t TCP_Server::index2seq(int index) {
