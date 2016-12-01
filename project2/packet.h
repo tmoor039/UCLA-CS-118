@@ -40,6 +40,9 @@ class TCP_Packet {
     // Packets by default arent acked or sent
     bool m_sent = false;
     bool m_acked = false;
+    // Store whether we have received 3 Duplicate ACKs
+    bool m_tri_dups = false;
+    ssize_t m_num_acks = 0;
 
 public:
 	// Single constructor with optional Data
@@ -52,16 +55,18 @@ public:
 	// Accessors
   std::vector<uint8_t>* getData() { return &m_data; }
   TCP_Header getHeader() { return m_header; }
-  bool isAcked() { return m_acked; }
-  bool isSent() { return m_sent; }
-  int getLength() { return m_data.size() + HEADER_SIZE; }
+  bool isAcked() const { return m_acked; }
+  bool isSent() const { return m_sent; }
+  int getLength() const { return m_data.size() + HEADER_SIZE; }
+  bool gotThreeDups() const { return m_tri_dups; }
 
+  // Auxillary Methods
   uint8_t* encode();
   bool hasTimedOut();
+  void startTimer() { gettimeofday(&m_time_sent, nullptr); }
 
   // Mutators
   bool setData(char* data, int data_size = PACKET_SIZE);
-  void startTimer() { gettimeofday(&m_time_sent, nullptr); }
-  void setAcked() { m_acked = true; }
+  void setAcked(); 
   void setSent() { m_sent = true; }
 };

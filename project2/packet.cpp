@@ -75,3 +75,15 @@ bool TCP_Packet::setData(char* data, int data_size){
 	return false;
 }
 
+void TCP_Packet::setAcked(){
+	// If we have already been acked, count the duplicates
+	if(m_acked){
+		// If we have 3 duplicates, set tri duplicates field
+		if(++m_num_acks == 3){
+			m_tri_dups = true;
+		}
+	} else {
+		m_acked = true;
+	}
+}
+
