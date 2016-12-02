@@ -68,5 +68,5 @@ public:
   // Mutators
   bool setData(char* data, int data_size = PACKET_SIZE);
   void setAcked(); 
-  void setSent() { m_sent = true; }
+  void setSent();
 };

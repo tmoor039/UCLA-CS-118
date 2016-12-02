@@ -90,3 +90,13 @@ void TCP_Packet::setAcked(){
 	}
 }
 
+void TCP_Packet::setSent() {
+    m_sent = true;
+    
+    // if this packet is getting resent, reset number of acks
+    if (m_tri_dups) {
+        m_num_acks = 0;
+        m_tri_dups = false;
+    }
+}
+

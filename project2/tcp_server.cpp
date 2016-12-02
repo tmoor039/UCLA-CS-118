@@ -274,8 +274,10 @@ bool TCP_Server::sendFile() {
                 if(!m_filePackets.at(i).isAcked()){
                     if(m_filePackets.at(i).isSent()){
                         // Retransmission - if its been sent and timed out
-                        if(m_filePackets.at(i).hasTimedOut())
+                        if(m_filePackets.at(i).hasTimedOut()) {
                             sendNextPacket(i, true);
+                            m_filePackets.at(i).startTimer();
+                        }
                     } else {
                         // Normal sent - Start the timer after the send
                         sendNextPacket(i, false);
