@@ -39,7 +39,7 @@ using namespace std;
 
     m_nextPacket = 0;
     m_basePacket = 0;
-    m_cwnd = 1;
+    m_cwnd = 1.0;
     // Open up file to read from
     m_file.open(m_filename.c_str(), ios::in | ios::binary);
     // Server will ensure this is effectively handled
@@ -192,7 +192,7 @@ bool TCP_Server::grabChunk(ssize_t num_chunks){
                 data_size = PACKET_SIZE;
             }
             // Create a packet based on data
-            TCP_Packet packet(m_nextSeq, 0, m_cwnd*PACKET_DATA_SIZE, 0, 0, 0);
+            TCP_Packet packet(m_nextSeq, 0, (int)m_cwnd*PACKET_DATA_SIZE, 0, 0, 0);
             packet.setData(data, data_size);
             m_filePackets.push_back(packet);
             // Set the next sequence
@@ -261,21 +261,23 @@ bool TCP_Server::sendNextPacket(ssize_t pos, bool resend) {
 
 bool TCP_Server::sendFile() {
     // Get the very first chunk
-    uint16_t ack = 0;
+    int ack = 0;
     grabChunk();
     while(!m_filePackets.empty()){
         // Window size based on stored packets
-        ssize_t win_size = m_filePackets.size();
+       // ssize_t win_size = m_filePackets.size();
         // Send everything in the current window
         do {
-            for(ssize_t i = 0; i < win_size; i++){
-                setTimeout(0, RTO * 1000, 1);
-                setTimeout(0, RTO * 1000, 0);
+            for(ssize_t i = 0; i < m_cwnd; i++){
                 if(!m_filePackets.at(i).isAcked()){
                     if(m_filePackets.at(i).isSent()){
                         // Retransmission - if its been sent and timed out
-                        if(m_filePackets.at(i).hasTimedOut())
+                        if(m_filePackets.at(i).hasTimedOut()){
+        					m_ssthresh = (m_cwnd*MIN_CWND)/2;
+                            m_cwnd = 1.0;
+                            if(m_curr_mode == CA) { m_curr_mode = SS; }
                             sendNextPacket(i, true);
+						}
                     } else {
                         // Normal sent - Start the timer after the send
                         sendNextPacket(i, false);
@@ -286,27 +288,23 @@ bool TCP_Server::sendFile() {
         } while (!receiveDataNoWait());
         // Mark the packet as acked
         ack = receiveAck();
+        // If Ack not found, ignore and move on
+        if(ack == -1) { continue; }
         fprintf(stdout, "Receiving packet %d\n", ack);
         // Based on congestion window, update cwnd
         /*if(m_cwnd <= 15){
           m_cwnd++;
           }*/
         // Retrieve currently acked packet
-        int curr_index = seq2index(ack);
         TCP_Packet just_acked = m_filePackets.at(seq2index(ack));
         // Run the congestion control based on packet state
         switch(m_curr_mode){
-            case SS: {
+            case SS: 
                          runSlowStart(just_acked);
                          break;
-                     }
-            case CA: {
-                         bool got_lost = (just_acked.hasTimedOut() || just_acked.gotThreeDups());
-                         if(runCongestionAvoidance(just_acked, got_lost)){
-                             sendNextPacket(curr_index, true);
-                         }
+            case CA:
+                         runCongestionAvoidance(just_acked);
                          break;
-                     }
             default:
                      break;
         }
@@ -315,7 +313,7 @@ bool TCP_Server::sendFile() {
         // We can move our window forward to the right
         if(move_forward > 0){
             // Grab as much as we can
-            grabChunk(m_cwnd - m_filePackets.size());
+            grabChunk((int)m_cwnd - m_filePackets.size());
         }
     }
     // TODO: Change timeout
@@ -339,7 +337,7 @@ bool TCP_Server::sendFile() {
     // Receive FIN/ACK from client
     m_packet = new TCP_Packet(m_recvBuffer);
     uint16_t seq = m_packet->getHeader().fields[SEQ];
-    fprintf(stdout, "Receiving packet %hu\n", ack);
+    fprintf(stdout, "Receiving packet %d\n", ack);
     delete m_packet;
 
     // Send ACK
@@ -365,7 +363,7 @@ bool TCP_Server::sendFile() {
     return true;
 }
 
-uint16_t TCP_Server::receiveAck() {
+int TCP_Server::receiveAck() {
     TCP_Packet* ackPacket = new TCP_Packet(m_recvBuffer);
     uint16_t ack = ackPacket->getHeader().fields[ACK];
     delete ackPacket;
@@ -373,8 +371,8 @@ uint16_t TCP_Server::receiveAck() {
     // mark packet as acked
     int packet = seq2index(ack);
     if(packet < 0){ 
-        perror("Couldn't find packet");
-        exit(1);
+       // perror("Couldn't find packet");
+        return -1;
     }
     m_filePackets.at(packet).setAcked();
     return ack;
@@ -395,11 +393,6 @@ int TCP_Server::seq2index(uint16_t seq) {
 
 // Pre-Condition - mode is Slow Start
 void TCP_Server::runSlowStart(TCP_Packet packet){
-    // If the packet times out we reset back to 1
-    if(packet.hasTimedOut()){
-        m_cwnd = 1;
-        return;
-    }
     // Additive increase for each packet until ssthresh
     if(m_cwnd < (m_ssthresh/MIN_CWND)){
         if(packet.isAcked()) { m_cwnd++; }
@@ -409,24 +402,15 @@ void TCP_Server::runSlowStart(TCP_Packet packet){
     }
 }
 // Pre-Condition - mode is Congestion Avoidance
-bool TCP_Server::runCongestionAvoidance(TCP_Packet packet, bool lost){
-    // If we have a lost event - either through RTO or DUP - reset ssthresh
-    if(lost){
-        m_ssthresh = (m_cwnd*MIN_CWND)/2;
-    }
+bool TCP_Server::runCongestionAvoidance(TCP_Packet packet){
     // If we have three duplicate Acks, then we reset cwnd and move to Fast Retransmit
     if(packet.gotThreeDups()){
+        m_ssthresh = (m_cwnd*MIN_CWND)/2;
         m_cwnd = (m_ssthresh/MIN_CWND);
         return true;
     }
-    // If the packet times out we reset back to 1 and go back to SS
-    else if(packet.hasTimedOut()){
-        m_cwnd = 1;
-        m_curr_mode = SS;
-        return false;
-    }
     // Additive Increase for every w segments Acked
-    m_cwnd = m_cwnd + (1/m_cwnd);
+    m_cwnd = m_cwnd + (1.0/m_cwnd);
     return false;
 }
 

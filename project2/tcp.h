@@ -60,7 +60,7 @@ class TCP_Server: public TCP {
     // index for the next packet within the window that is ready to be sent.
     int m_nextPacket;
     // in units of PACKET_SIZE
-    int m_cwnd;
+    float m_cwnd;
     // The sequence number of the first usable but not yet sent packet.
     // In units of bytes.
     uint16_t m_nextSeq;
@@ -83,7 +83,7 @@ class TCP_Server: public TCP {
 
 	// Run Congestion Avoidance algorithm
 	// Return true if we want to Fast Retransmit
-	bool runCongestionAvoidance(TCP_Packet packet, bool lost);
+	bool runCongestionAvoidance(TCP_Packet packet);
 
 public:
 	TCP_Server(uint16_t port, std::string filename);
@@ -124,7 +124,7 @@ public:
 
 	// Marks the corresponding file packet as marked and returns the ack.
 	// Call after reading data to receive buffer
-	uint16_t receiveAck();
+	int receiveAck();
 
 	// Test function
 	bool testWrite();
