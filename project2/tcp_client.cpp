@@ -43,7 +43,7 @@ bool TCP_Client::sendData(uint8_t* data, ssize_t data_size){
 	// Copy the encoded data to the send buffer
 	copy(data, data + data_size, m_sendBuffer);
 	if(sendto(m_sockFD, m_sendBuffer, data_size, 0, (struct sockaddr*)&m_serverInfo, m_serverLen) == -1){
-		perror("Sending Error");
+		// perror("Sending Error");
 		return false;
 	}
 
@@ -56,7 +56,7 @@ bool TCP_Client::receiveData(){
 	memset(m_recvBuffer, '\0', sizeof(m_recvBuffer));
 	m_recvSize = recvfrom(m_sockFD, m_recvBuffer, MSS, 0, (struct sockaddr*)&m_serverInfo, &m_serverLen);
     if(m_recvSize == -1){
-		perror("Receiving Error");
+		// perror("Receiving Error");
 		return false;
 	}
 
@@ -83,7 +83,6 @@ bool TCP_Client::receiveFile(){
             uint16_t flags = m_packet->getHeader().fields[FLAGS];
             vector<uint8_t>* data = m_packet->getData();
             ssize_t data_size = data->size();
-            cout << m_expected_seq << endl;
 			fprintf(stdout, "Receiving packet %hu\n", seq);
 
 			// Detect FIN bit
@@ -94,7 +93,7 @@ bool TCP_Client::receiveFile(){
 				sendData(m_packet->encode());
 				nPackets++;
 
-				setTimeout(0, RTO, 0);
+				setTimeout(0, RTO * 1000, 0);
 
 				// Retransmit in case of timeout
 				while(!receiveData()){
@@ -157,12 +156,12 @@ bool TCP_Client::setTimeout(float sec, float usec, bool flag){
 	// If flag is 1 then send timeout else receive timeout
 	if(flag){
 		if(setsockopt(m_sockFD, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv)) < 0){
-			perror("Send Timeout Error");
+			// perror("Send Timeout Error");
 			return false;
 		}
 	} else {
 		if(setsockopt(m_sockFD, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv)) < 0){
-			perror("Receive Timeout Error");
+			// perror("Receive Timeout Error");
 			return false;
 		}
 	}
@@ -175,8 +174,11 @@ bool TCP_Client::handshake(){
 	fprintf(stdout, "Sending packet 0 SYN\n");
 
 	// Set Sending timeout
-	setTimeout(0, RTO, 1);
+	setTimeout(0, RTO * 1000, 1);
 
+    // Set Receiving timeout
+	setTimeout(0, RTO * 1000, 0);
+    
 	srand(time(NULL));
 
 	m_packet = new TCP_Packet(rand() % MAX_SEQ + 1, 0, PACKET_SIZE, 0, 1, 0);

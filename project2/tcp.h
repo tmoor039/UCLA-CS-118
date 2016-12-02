@@ -92,6 +92,7 @@ public:
 	bool handshake() override;
 	bool sendData(uint8_t* data, ssize_t data_size = MSS) override;
 	bool receiveData() override;
+	bool receiveDataNoWait();
 	bool setTimeout(float sec, float usec, bool flag) override;
 
 	// Grab chunks from the file and push to m_filePackets.

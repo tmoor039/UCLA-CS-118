@@ -1,4 +1,7 @@
 #include "packet.h"
+#include <iostream>
+
+using namespace std;
 
 TCP_Packet::TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win, bool f_ack, 
 		bool f_syn, bool f_fin, uint8_t* data, ssize_t data_size){
@@ -37,11 +40,11 @@ TCP_Packet::~TCP_Packet(){
 
 bool TCP_Packet::hasTimedOut(){
 	// Get the current time and a place to store the diff
-	struct timeval diff, now;
+	struct timeval now;
 	gettimeofday(&now, nullptr);
-	timersub(&m_time_sent, &now, &diff);
 	// If the difference is > 500 ms then we timed out
-	if((diff.tv_sec*1000) + (diff.tv_usec/1000) > RTO){
+	if(((now.tv_sec*1000) + (now.tv_usec/1000)) - ((m_time_sent.tv_sec*1000) + (m_time_sent.tv_usec/1000)) > RTO){
+        m_time_sent = now;
 		return true;
 	}
 	return false;
