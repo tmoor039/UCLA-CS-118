@@ -71,9 +71,6 @@ bool TCP_Client::receiveFile(){
 
     // Create a vector to hold buffered packets
     vector<TCP_Packet*> packet_buffer;
-    
-    // Keep track of received packets
-    vector<uint16_t> received;
 
     // Receive the file
     int nPackets = 0;
@@ -88,7 +85,7 @@ bool TCP_Client::receiveFile(){
             vector<uint8_t>* data = m_packet->getData();
             ssize_t data_size = data->size();
 			fprintf(stdout, "Receiving packet %hu\n", seq);
-
+            cout << packet_buffer.size() << endl;
 			// Detect FIN bit
 			if (0x0001 & flags) {
 				// Send the FIN/ACK
@@ -113,13 +110,14 @@ bool TCP_Client::receiveFile(){
             else if (seq == m_expected_seq) {
 
                 // Write the data to the file
-                if (find(received.begin(), received.end(), seq) == received.end()) {
-			        for(ssize_t i = 0; i < data_size; i++){
-				        outputFile << data->at(i);
-			        }
-                } else {
-                    received.push_back(seq);
+                cout << "WRITING: " << m_expected_seq << endl;
+			    for(ssize_t i = 0; i < data_size; i++){
+			        outputFile << data->at(i);
+		        }
+                while (m_written.size() >= (int)(START_WINDOW/PACKET_SIZE)) {
+                    m_written.erase(m_written.begin());
                 }
+                m_written.push_back(seq);
                 m_expected_seq = (m_expected_seq + m_packet->getLength() - HEADER_SIZE) % MAX_SEQ;
 			    delete m_packet;
 
@@ -132,9 +130,14 @@ bool TCP_Client::receiveFile(){
                             found = true;
                             m_expected_seq = (m_expected_seq + packet_buffer[i]->getLength() - HEADER_SIZE) % MAX_SEQ;
                             data = packet_buffer[i]->getData();
+                            cout << "WRITING FROM BUFFER: " << packet_buffer[i]->getHeader().fields[SEQ] << endl;
                             for(ssize_t i = 0; i < data_size; i++){
                                 outputFile << data->at(i);
                             }
+                            while (m_written.size() >= (int)(START_WINDOW/PACKET_SIZE)) {
+                                m_written.erase(m_written.begin());
+                            }
+                            m_written.push_back(seq);
                             delete packet_buffer[i];
                             packet_buffer.erase(packet_buffer.begin() + i);
                         }
@@ -143,13 +146,23 @@ bool TCP_Client::receiveFile(){
             }
 
             // If an unexpected packet was received, add it to the buffer
-            else if (find(received.begin(), received.end(), seq) == received.end()) {
-                packet_buffer.push_back(m_packet);
+            else {
+                bool found = false;
+                for (size_t i = 0; i < packet_buffer.size(); i++) {
+                    if(seq == packet_buffer[i]->getHeader().fields[SEQ]) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found && find(m_written.begin(), m_written.end(), seq) == m_written.end() && packet_buffer.size() < (int)(START_WINDOW/PACKET_SIZE)) {
+                    cout << "BUFFERING: " << seq << endl;
+                    packet_buffer.push_back(m_packet);
+                }
             }
 
 			// Send the ACK
-			fprintf(stdout, "Sending packet %d\n", (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ);
-			m_packet = new TCP_Packet(m_expected_seq, (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ, PACKET_SIZE, 1, 0, 0);
+			fprintf(stdout, "Sending packet %d\n", m_expected_seq);
+			m_packet = new TCP_Packet(ack, m_expected_seq, START_WINDOW, 1, 0, 0);
 			sendData(m_packet->encode());
 			nPackets++;
 		}
@@ -206,6 +219,8 @@ bool TCP_Client::handshake(){
     m_expected_seq = (seq + 1) % MAX_SEQ;
 	fprintf(stdout, "Receiving packet %hu\n", seq);
 	delete m_packet;
+
+    m_written.push_back(seq);
 
 	// Send the ACK from the client to begin data transmission
 	fprintf(stdout, "Sending packet %d\n", ack);

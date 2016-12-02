@@ -149,7 +149,7 @@ bool TCP_Server::handshake(){
 
     // Retransmit data if timeout
     while(!receiveData()){
-        fprintf(stdout, "Sending packet %d %d %d Retransmission SYN\n", seq + 1, PACKET_SIZE, SSTHRESH);
+        fprintf(stdout, "Sending packet %d %d %d Retransmission SYN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
         sendData(m_packet->encode());
     }
 
@@ -263,9 +263,10 @@ bool TCP_Server::sendFile() {
     while(!m_filePackets.empty()){
         // Window size based on stored packets
        ssize_t win_size = m_filePackets.size();
+       cout << m_filePackets.size() << endl;
         // Send everything in the current window
         do {
-            for(ssize_t i = 0; i < min((int)win_size, (int)m_cwnd); i++){
+            for(ssize_t i = 0; i < min(min((int)win_size, (int)m_cwnd), (int)(m_window/PACKET_SIZE)); i++){
                     if(m_filePackets.at(i).isSent()){
                         // Retransmission - if its been sent and timed out
                         if(m_filePackets.at(i).hasTimedOut()){
@@ -282,6 +283,8 @@ bool TCP_Server::sendFile() {
                     }
             }
         } while (!receiveDataNoWait());
+
+        do {
         // Mark the packet as acked
         ack = receiveAck();
         // If Ack not found, ignore and move on
@@ -305,15 +308,15 @@ bool TCP_Server::sendFile() {
             default:
                      break;
         }
-        cout << "BEFORE: " << m_filePackets.size() << endl;
         bool move_forward = removeAcked(just_acked_index);
-        cout << "AFTER: " << m_filePackets.size() << endl;
         // If we just received an Ack for one of the first packets
         // We can move our window forward to the right
         if(move_forward){
             // Grab as much as we can
+            cout << m_cwnd << endl;
             grabChunk((int)m_cwnd - m_filePackets.size());
         }
+        } while (receiveDataNoWait());
     }
     // TODO: Change timeout
     setTimeout(0, RTO * 1000, 1);
@@ -365,6 +368,7 @@ bool TCP_Server::sendFile() {
 int TCP_Server::receiveAck() {
     TCP_Packet* ackPacket = new TCP_Packet(m_recvBuffer);
     uint16_t ack = ackPacket->getHeader().fields[ACK];
+    m_window = ackPacket->getHeader().fields[WIN];
     delete ackPacket;
 
     if (ack == m_last_ack) {

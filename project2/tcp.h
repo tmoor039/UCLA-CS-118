@@ -91,6 +91,8 @@ class TCP_Server: public TCP {
     // Number of duplicate acks received
     int m_duplicates_received = 0;
 
+    uint16_t m_window = START_WINDOW;
+
 public:
 	TCP_Server(uint16_t port, std::string filename);
 	~TCP_Server();
@@ -143,6 +145,7 @@ class TCP_Client: public TCP {
 	socklen_t m_serverLen = sizeof(m_serverInfo);
 	int m_sockFD;
 	uint16_t m_expected_seq;
+    std::vector<uint16_t> m_written;
 
 	public:
 	TCP_Client(std::string serverHost, uint16_t port);
