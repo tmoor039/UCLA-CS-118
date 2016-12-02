@@ -85,6 +85,12 @@ class TCP_Server: public TCP {
 	// Return true if we want to Fast Retransmit
 	bool runCongestionAvoidance(TCP_Packet packet);
 
+    // Last ack number received
+    uint16_t m_last_ack = 0;
+
+    // Number of duplicate acks received
+    int m_duplicates_received = 0;
+
 public:
 	TCP_Server(uint16_t port, std::string filename);
 	~TCP_Server();
@@ -101,7 +107,7 @@ public:
 
 	// Remove acked packets from m_filePackets and return number of removed
 	// packets
-	ssize_t removeAcked();
+	bool removeAcked(int pos);
 
 	// send packet corresponding to m_nextSeq if it is within send window
 	bool sendNextPacket(ssize_t pos, bool resend);

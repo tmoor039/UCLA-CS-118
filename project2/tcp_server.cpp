@@ -5,6 +5,7 @@
 #include "globals.h"
 #include <cmath>
 #include <iterator>
+#include <algorithm>
 
 using namespace std;
 
@@ -226,17 +227,13 @@ bool TCP_Server::testWrite() {
     return true;
 }
 
-ssize_t TCP_Server::removeAcked(){
-    // Use i to count the number of elements popped
-    ssize_t i = 0;
-    // Pop all the front ACKed Packets
-    while(m_filePackets.at(0).isAcked()){
-        m_filePackets.erase(m_filePackets.begin());
-        i++;
-        if(m_filePackets.empty())
-            break;
-    }
-    return i;
+bool TCP_Server::removeAcked(int pos){
+    if(pos == -1)
+        return false;
+    // Remove all the elements before the just acked packet since 
+    // they have been received on the client regardless
+    m_filePackets.erase(m_filePackets.begin(), m_filePackets.size() > (size_t)pos + 1 ? m_filePackets.begin() + pos + 1 : m_filePackets.end());
+    return true;
 }
 
 bool TCP_Server::sendNextPacket(ssize_t pos, bool resend) {
@@ -265,11 +262,10 @@ bool TCP_Server::sendFile() {
     grabChunk();
     while(!m_filePackets.empty()){
         // Window size based on stored packets
-       // ssize_t win_size = m_filePackets.size();
+       ssize_t win_size = m_filePackets.size();
         // Send everything in the current window
         do {
-            for(ssize_t i = 0; i < m_cwnd; i++){
-                if(!m_filePackets.at(i).isAcked()){
+            for(ssize_t i = 0; i < min((int)win_size, (int)m_cwnd); i++){
                     if(m_filePackets.at(i).isSent()){
                         // Retransmission - if its been sent and timed out
                         if(m_filePackets.at(i).hasTimedOut()){
@@ -284,7 +280,6 @@ bool TCP_Server::sendFile() {
                         sendNextPacket(i, false);
                         m_filePackets.at(i).startTimer();
                     }
-                }
             }
         } while (!receiveDataNoWait());
         // Mark the packet as acked
@@ -297,7 +292,8 @@ bool TCP_Server::sendFile() {
           m_cwnd++;
           }*/
         // Retrieve currently acked packet
-        TCP_Packet just_acked = m_filePackets.at(seq2index(ack));
+        int just_acked_index = seq2index(ack);
+        TCP_Packet just_acked = m_filePackets.at(just_acked_index);
         // Run the congestion control based on packet state
         switch(m_curr_mode){
             case SS: 
@@ -309,10 +305,12 @@ bool TCP_Server::sendFile() {
             default:
                      break;
         }
-        ssize_t move_forward = removeAcked();
+        cout << "BEFORE: " << m_filePackets.size() << endl;
+        bool move_forward = removeAcked(just_acked_index);
+        cout << "AFTER: " << m_filePackets.size() << endl;
         // If we just received an Ack for one of the first packets
         // We can move our window forward to the right
-        if(move_forward > 0){
+        if(move_forward){
             // Grab as much as we can
             grabChunk((int)m_cwnd - m_filePackets.size());
         }
@@ -369,6 +367,13 @@ int TCP_Server::receiveAck() {
     uint16_t ack = ackPacket->getHeader().fields[ACK];
     delete ackPacket;
 
+    if (ack == m_last_ack) {
+        m_duplicates_received++;
+    } else {
+        m_last_ack = ack;
+        m_duplicates_received = 1;
+    }
+
     // mark packet as acked
     int packet = seq2index(ack);
     if(packet < 0){ 
@@ -405,7 +410,9 @@ void TCP_Server::runSlowStart(TCP_Packet packet){
 // Pre-Condition - mode is Congestion Avoidance
 bool TCP_Server::runCongestionAvoidance(TCP_Packet packet){
     // If we have three duplicate Acks, then we reset cwnd and move to Fast Retransmit
-    if(packet.gotThreeDups()){
+    //if(packet.gotThreeDups()){
+    if (m_duplicates_received >= 4) {
+        m_duplicates_received = 0;
         m_ssthresh = (m_cwnd*MIN_CWND)/2;
         m_cwnd = (m_ssthresh/MIN_CWND);
         return true;
