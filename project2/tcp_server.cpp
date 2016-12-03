@@ -132,6 +132,7 @@ bool TCP_Server::handshake(){
     uint16_t seq = m_packet->getHeader().fields[SEQ];
     fprintf(stdout, "Receiving packet %hu\n", ack);
     delete m_packet;
+    m_packet = nullptr;
 
     // Begin Sending Timeout
     setTimeout(0, RTO * 1000, 1);
@@ -152,8 +153,8 @@ bool TCP_Server::handshake(){
         fprintf(stdout, "Sending packet %d %d %d Retransmission SYN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
         sendData(m_packet->encode());
     }
-
     delete m_packet;
+    m_packet = nullptr;
 
     m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
 
@@ -162,6 +163,7 @@ bool TCP_Server::handshake(){
     ack = m_packet->getHeader().fields[ACK];
     fprintf(stdout, "Receiving packet %hu\n", ack);
     delete m_packet;
+    m_packet = nullptr;
     return true;
 }
 
@@ -196,6 +198,12 @@ bool TCP_Server::grabChunk(ssize_t num_chunks){
             TCP_Packet packet(m_nextSeq, 0, (int)m_cwnd*PACKET_DATA_SIZE, 0, 0, 0);
             packet.setData(data, data_size);
             m_filePackets.push_back(packet);
+            //m_filePackets[m_filePackets.size()-1].deepCopyEncoded(&packet);
+            //cout << "HI" << endl;
+            //printf("Address: %p\n", packet.getEncoded());  
+            //printf("Address: %p\n", m_filePackets[m_filePackets.size()-1].getEncoded());  
+            //cout << packet.getEncoded() << endl;
+            //cout << m_filePackets[m_filePackets.size()-1].getEncoded() << endl;
             // Set the next sequence
             m_nextSeq = (m_nextSeq + data_size) % MAX_SEQ;
             // If we just grabbed the remaining chunk, we're done with data
@@ -232,6 +240,9 @@ bool TCP_Server::removeAcked(int pos){
         return false;
     // Remove all the elements before the just acked packet since 
     // they have been received on the client regardless
+    /*for (int i = 0; i < pos; i++) {
+        m_filePackets.at(i).deleteEncoded();
+    }*/
     m_filePackets.erase(m_filePackets.begin(), m_filePackets.size() > (size_t)pos + 1 ? m_filePackets.begin() + pos + 1 : m_filePackets.end());
     return true;
 }
@@ -263,12 +274,15 @@ bool TCP_Server::sendFile() {
     while(!m_filePackets.empty()){
         // Window size based on stored packets
        ssize_t win_size = m_filePackets.size();
-       cout << m_filePackets.size() << endl;
         // Send everything in the current window
+        ssize_t current_window;
         do {
-            for(ssize_t i = 0; i < min(min((int)win_size, (int)m_cwnd), (int)(m_window/PACKET_SIZE)); i++){
+            current_window = min(min((int)win_size, (int)m_cwnd), (int)(m_window/PACKET_SIZE));
+            for(ssize_t i = 0; i < current_window; i++){
                     if(m_filePackets.at(i).isSent()){
-                        // Retransmission - if its been sent and timed out
+                        // Retransmission - if its been sent and timed out 
+                        // Because the packet is lost, we reset ssthresh and
+                        // switch mode back to SS if necessary
                         if(m_filePackets.at(i).hasTimedOut()){
         					m_ssthresh = (m_cwnd*MIN_CWND)/2;
                             m_cwnd = 1.0;
@@ -282,41 +296,64 @@ bool TCP_Server::sendFile() {
                         m_filePackets.at(i).startTimer();
                     }
             }
+            // Non-blocking read
         } while (!receiveDataNoWait());
 
         do {
         // Mark the packet as acked
         ack = receiveAck();
         // If Ack not found, ignore and move on
-        if(ack == -1) { continue; }
+        if(ack == -1) {
+            cout << "RETRANSMISSION LOOP" << endl;
+            continue;
+        }
         fprintf(stdout, "Receiving packet %d\n", ack);
-        // Based on congestion window, update cwnd
-        /*if(m_cwnd <= 15){
-          m_cwnd++;
-          }*/
         // Retrieve currently acked packet
         int just_acked_index = seq2index(ack);
         TCP_Packet just_acked = m_filePackets.at(just_acked_index);
-        // Run the congestion control based on packet state
+        // Run the congestion control based on current packet state
         switch(m_curr_mode){
             case SS: 
                          runSlowStart(just_acked);
                          break;
             case CA:
-                         runCongestionAvoidance(just_acked);
+                         if(runCongestionAvoidance(just_acked)) {
+                             int packet_to_send = ack2index(ack);
+                             if (packet_to_send >= 0) {
+                                 sendNextPacket(packet_to_send, true);
+                                 m_filePackets.at(packet_to_send).startTimer();
+                             }
+                         }
                          break;
             default:
-                     break;
+                         break;
         }
-        bool move_forward = removeAcked(just_acked_index);
         // If we just received an Ack for one of the first packets
         // We can move our window forward to the right
-        if(move_forward){
-            // Grab as much as we can
-            cout << m_cwnd << endl;
-            grabChunk((int)m_cwnd - m_filePackets.size());
-        }
+        /*if(move_forward){
+        // Grab as much as we can
+        cout << m_cwnd << endl;
+        grabChunk((int)m_cwnd - m_filePackets.size());
+        }*/
         } while (receiveDataNoWait());
+
+        bool shouldGrab = false;
+        int greatest_pos = -1;
+        for(ssize_t i = 0; i < (int)m_filePackets.size(); i++){
+            if(m_filePackets.at(i).isAcked()) {
+                greatest_pos = i;
+                shouldGrab = true;
+            }
+        }
+        
+        if (greatest_pos >= 0) {
+            removeAcked(greatest_pos);
+        }
+
+        if(shouldGrab && m_cwnd > m_filePackets.size()) {
+            // Grab as much as we can
+            cout << grabChunk(min((int)(m_window/PACKET_SIZE) - m_filePackets.size(), (int)m_cwnd - m_filePackets.size())) << endl;
+        }
     }
     // TODO: Change timeout
     setTimeout(0, RTO * 1000, 1);
@@ -333,6 +370,7 @@ bool TCP_Server::sendFile() {
         sendData(m_packet->encode());
     }
     delete m_packet;
+    m_packet = nullptr;
 
     m_nextSeq = (m_nextSeq + 1) % MAX_SEQ;
 
@@ -341,6 +379,7 @@ bool TCP_Server::sendFile() {
     uint16_t seq = m_packet->getHeader().fields[SEQ];
     fprintf(stdout, "Receiving packet %d\n", ack);
     delete m_packet;
+    m_packet = nullptr;
 
     // Send ACK
     m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
@@ -361,7 +400,8 @@ bool TCP_Server::sendFile() {
         fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", m_nextSeq, PACKET_SIZE, SSTHRESH);
         sendData(m_packet->encode());
     }
-
+    delete m_packet;
+    m_packet = nullptr;
     return true;
 }
 
@@ -370,6 +410,7 @@ int TCP_Server::receiveAck() {
     uint16_t ack = ackPacket->getHeader().fields[ACK];
     m_window = ackPacket->getHeader().fields[WIN];
     delete ackPacket;
+    ackPacket = nullptr;
 
     if (ack == m_last_ack) {
         m_duplicates_received++;
@@ -381,7 +422,7 @@ int TCP_Server::receiveAck() {
     // mark packet as acked
     int packet = seq2index(ack);
     if(packet < 0){ 
-       // perror("Couldn't find packet");
+        // perror("Couldn't find packet");
         return -1;
     }
     m_filePackets.at(packet).setAcked();
@@ -392,8 +433,21 @@ int TCP_Server::seq2index(uint16_t seq) {
     // Run a linear scan within the window to find corresponding
     // packet to sequence number
     ssize_t packet_buffer_size = m_filePackets.size();
-    for(ssize_t i = 0; i < packet_buffer_size; i++){
+    for(ssize_t i = 0; i < min((int)(m_window/PACKET_SIZE), (int)packet_buffer_size); i++){
         if((m_filePackets.at(i).getHeader().fields[SEQ] + m_filePackets.at(i).getData()->size()) % MAX_SEQ == seq){
+            return i;
+        }
+    }
+    // Couldn't find packet with given sequence number
+    return -1;
+}
+
+int TCP_Server::ack2index(uint16_t ack) {
+    // Run a linear scan within the window to find corresponding
+    // packet to sequence number
+    ssize_t packet_buffer_size = m_filePackets.size();
+    for(ssize_t i = 0; i < min(min((int)m_cwnd, (int)(m_window/PACKET_SIZE)), (int)packet_buffer_size); i++){
+        if(m_filePackets.at(i).getHeader().fields[SEQ] == ack){
             return i;
         }
     }
@@ -415,10 +469,12 @@ void TCP_Server::runSlowStart(TCP_Packet packet){
 bool TCP_Server::runCongestionAvoidance(TCP_Packet packet){
     // If we have three duplicate Acks, then we reset cwnd and move to Fast Retransmit
     //if(packet.gotThreeDups()){
-    if (m_duplicates_received >= 4) {
+    if (m_duplicates_received >= 4 || packet.gotThreeDups()) {
+        cout << "THREE DUPLICATE ACKS" << endl;
         m_duplicates_received = 0;
+        packet.resetDups();
         m_ssthresh = (m_cwnd*MIN_CWND)/2;
-        m_cwnd = (m_ssthresh/MIN_CWND);
+        m_cwnd = max(1.0, (double)(m_ssthresh/MIN_CWND));
         return true;
     }
     // Additive Increase for every w segments Acked

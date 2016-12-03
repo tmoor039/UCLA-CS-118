@@ -131,7 +131,7 @@ bool TCP_Client::receiveFile(){
                             m_expected_seq = (m_expected_seq + packet_buffer[i]->getLength() - HEADER_SIZE) % MAX_SEQ;
                             data = packet_buffer[i]->getData();
                             cout << "WRITING FROM BUFFER: " << packet_buffer[i]->getHeader().fields[SEQ] << endl;
-                            for(ssize_t i = 0; i < data_size; i++){
+                            for(ssize_t i = 0; i < (int)data->size(); i++){
                                 outputFile << data->at(i);
                             }
                             while (m_written.size() >= (int)(START_WINDOW/PACKET_SIZE)) {

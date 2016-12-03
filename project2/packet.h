@@ -3,6 +3,9 @@
 #include <vector>
 #include <sys/time.h>
 #include "stdint.h"
+#include <iostream>
+
+using namespace std;
 
 class TCP_Packet {
 	struct TCP_Header {
@@ -33,7 +36,8 @@ class TCP_Packet {
 
 	} m_header;
 	std::vector<uint8_t> m_data; 
-  	uint8_t* m_encoded_packet = nullptr;
+    uint8_t* m_encoded_packet = nullptr;
+    int m_enc_count = 0;
 	struct timeval m_time_sent;
 
     // Mark packet as sent and acked as necessary
@@ -50,10 +54,15 @@ public:
 			bool f_fin, uint8_t* data = nullptr, ssize_t data_size = PACKET_SIZE);
 	// Constructor that decodes data stream into TCP Packet
 	TCP_Packet(uint8_t* enc_stream, int enc_size = MSS);
+    // Copy constructor
+    TCP_Packet(const TCP_Packet& other);
+    // Assignment operator
+    TCP_Packet& operator=(const TCP_Packet& other);
   // Destructor to remove any heap allocated objects
   ~TCP_Packet();
 	// Accessors
   std::vector<uint8_t>* getData() { return &m_data; }
+  uint8_t* getEncoded() { return m_encoded_packet; }
   TCP_Header getHeader() { return m_header; }
   bool isAcked() const { return m_acked; }
   bool isSent() const { return m_sent; }
@@ -67,6 +76,9 @@ public:
 
   // Mutators
   bool setData(char* data, int data_size = PACKET_SIZE);
+  void resetDups() { m_num_acks = 0; m_tri_dups = false; }
   void setAcked(); 
   void setSent();
+  void deepCopyEncoded(TCP_Packet* from);
+  void deleteEncoded() { if(m_encoded_packet) { cout << "DELETED" << endl; delete [] m_encoded_packet; } }
 };

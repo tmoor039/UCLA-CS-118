@@ -127,6 +127,9 @@ public:
 	// returns index of the file packets based on sequence number
 	int seq2index(uint16_t seq);
 
+	// returns index of the file that should be sent based on the received ack number
+	int ack2index(uint16_t ack);
+
 	// returns sequence number based on index of file packets
 	uint16_t index2seq(int index);
 
