@@ -80,5 +80,5 @@ public:
   void setAcked(); 
   void setSent();
   void deepCopyEncoded(TCP_Packet* from);
-  void deleteEncoded() { if(m_encoded_packet) { cout << "DELETED" << endl; delete [] m_encoded_packet; } }
+  void deleteEncoded() { if(m_encoded_packet) { delete [] m_encoded_packet; } }
 };

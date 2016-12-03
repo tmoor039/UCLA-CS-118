@@ -38,11 +38,6 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
-    // Testing breakfile
-    if (tcpServer.testWrite() == false) {
-        cout << "Test write error\n";
-    }
-
   tcpServer.sendFile();
 
 	return 0;

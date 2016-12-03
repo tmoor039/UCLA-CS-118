@@ -79,11 +79,11 @@ class TCP_Server: public TCP {
 	
 	// Private CongestionControl methods
 	// Run Slow Start Algorithm
-	void runSlowStart(TCP_Packet packet);
+	bool runSlowStart(uint16_t ack);
 
 	// Run Congestion Avoidance algorithm
 	// Return true if we want to Fast Retransmit
-	bool runCongestionAvoidance(TCP_Packet packet);
+	bool runCongestionAvoidance(uint16_t ack);
 
     // Last ack number received
     uint16_t m_last_ack = 0;
