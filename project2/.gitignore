@@ -6,3 +6,6 @@ server
 *.mp3
 *.dat
 ~*
+simple-tcp-server
+simple-tcp-client
+*.tar.gz
