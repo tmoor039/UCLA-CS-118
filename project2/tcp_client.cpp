@@ -73,7 +73,6 @@ bool TCP_Client::receiveFile(){
     vector<TCP_Packet*> packet_buffer;
 
     // Receive the file
-    int nPackets = 0;
     while(1){
         if(receiveData()){
 
@@ -85,20 +84,18 @@ bool TCP_Client::receiveFile(){
             vector<uint8_t>* data = m_packet->getData();
             ssize_t data_size = data->size();
 			fprintf(stdout, "Receiving packet %hu\n", seq);
-            cout << packet_buffer.size() << endl;
 			// Detect FIN bit
 			if (0x0001 & flags) {
 				// Send the FIN/ACK
-				fprintf(stdout, "Sending packet %d FIN\n", (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ);
-				m_packet = new TCP_Packet(ack, (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ, PACKET_SIZE, 1, 0, 1);
+				fprintf(stdout, "Sending packet %d FIN\n", (seq + 1) % MAX_SEQ);
+				m_packet = new TCP_Packet(ack, (seq + 1) % MAX_SEQ, PACKET_SIZE, 1, 0, 1);
 				sendData(m_packet->encode());
-				nPackets++;
 
 				setTimeout(0, RTO * 1000, 0);
 
 				// Retransmit in case of timeout
 				while(!receiveData()){
-					fprintf(stdout, "Sending packet %d Retransmission FIN\n", (seq + m_recvSize - HEADER_SIZE) % MAX_SEQ);
+					fprintf(stdout, "Sending packet %d Retransmission FIN\n", (seq + 1) % MAX_SEQ);
 					sendData(m_packet->encode());
 				}
 
@@ -110,7 +107,6 @@ bool TCP_Client::receiveFile(){
             else if (seq == m_expected_seq) {
 
                 // Write the data to the file
-                cout << "WRITING: " << m_expected_seq << endl;
 			    for(ssize_t i = 0; i < data_size; i++){
 			        outputFile << data->at(i);
 		        }
@@ -130,7 +126,6 @@ bool TCP_Client::receiveFile(){
                             found = true;
                             m_expected_seq = (m_expected_seq + packet_buffer[i]->getLength() - HEADER_SIZE) % MAX_SEQ;
                             data = packet_buffer[i]->getData();
-                            cout << "WRITING FROM BUFFER: " << packet_buffer[i]->getHeader().fields[SEQ] << endl;
                             for(ssize_t i = 0; i < (int)data->size(); i++){
                                 outputFile << data->at(i);
                             }
@@ -155,7 +150,6 @@ bool TCP_Client::receiveFile(){
                     }
                 }
                 if (!found && find(m_written.begin(), m_written.end(), seq) == m_written.end() && packet_buffer.size() < (int)(START_WINDOW/PACKET_SIZE)) {
-                    cout << "BUFFERING: " << seq << endl;
                     packet_buffer.push_back(m_packet);
                 }
             }
@@ -164,7 +158,6 @@ bool TCP_Client::receiveFile(){
 			fprintf(stdout, "Sending packet %d\n", m_expected_seq);
 			m_packet = new TCP_Packet(ack, m_expected_seq, START_WINDOW, 1, 0, 0);
 			sendData(m_packet->encode());
-			nPackets++;
 		}
 	}
 }
