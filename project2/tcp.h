@@ -10,17 +10,21 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <vector>
-//#include "congestion_control.h"
 
 // Abstract base TCP class
 class TCP {
 protected:
+    // Port
 	uint16_t m_port;
+    // Packet used for setup and teardown
 	TCP_Packet* m_packet;
+    // Intermediary buffers for sending and receiving
 	uint8_t m_recvBuffer[MSS];
 	uint8_t m_sendBuffer[MSS];
+    // Status for early construction error handling
 	bool m_status = true;
-  int m_recvSize;
+    // Size of the data read from the socket
+    int m_recvSize;
 
 public:
 	TCP(uint16_t port): m_port(port) {};
@@ -91,6 +95,7 @@ class TCP_Server: public TCP {
     // Number of duplicate acks received
     int m_duplicates_received = 0;
 
+    // Initial Window value
     uint16_t m_window = START_WINDOW;
 
 public:
@@ -130,32 +135,32 @@ public:
 	// returns index of the file that should be sent based on the received ack number
 	int ack2index(uint16_t ack);
 
-	// returns sequence number based on index of file packets
-	uint16_t index2seq(int index);
-
 	// Marks the corresponding file packet as marked and returns the ack.
 	// Call after reading data to receive buffer
 	int receiveAck();
-
-	// Test function
-	bool testWrite();
 };
 
 // TCP Client
 class TCP_Client: public TCP {
+    // Destination IP
 	std::string m_serverHost;
+    // Destination IP info
 	struct sockaddr_in m_serverInfo;
 	socklen_t m_serverLen = sizeof(m_serverInfo);
+    // Socket File Descriptor
 	int m_sockFD;
+    // Expected sequence used based on previous + data size
 	uint16_t m_expected_seq;
+    // Buffer to hold written packets, to prevent re-writes
     std::vector<uint16_t> m_written;
 
-	public:
+public:
 	TCP_Client(std::string serverHost, uint16_t port);
 
 	bool handshake() override;
 	bool sendData(uint8_t* data, ssize_t data_size = MSS) override;
 	bool receiveData() override;
+    // Receive the file through out of order buffering
 	bool receiveFile();
 	bool setTimeout(float sec, float usec, bool flag) override;
 

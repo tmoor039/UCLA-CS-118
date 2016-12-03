@@ -1,8 +1,6 @@
 #include "tcp.h"
 #include <iostream>
 #include <stdlib.h>
-#include <fstream>
-#include <vector>
 #include <utility>
 #include <time.h>
 #include <algorithm>
@@ -44,7 +42,6 @@ bool TCP_Client::sendData(uint8_t* data, ssize_t data_size){
     // Copy the encoded data to the send buffer
     copy(data, data + data_size, m_sendBuffer);
     if(sendto(m_sockFD, m_sendBuffer, data_size, 0, (struct sockaddr*)&m_serverInfo, m_serverLen) <= 0){
-        // perror("Sending Error");
         return false;
     }
 
@@ -98,6 +95,11 @@ bool TCP_Client::receiveFile(){
                     fprintf(stdout, "Sending packet %d Retransmission FIN\n", (seq + 1) % MAX_SEQ);
                     sendData(m_packet->encode());
                 }
+
+                TCP_Packet* new_packet = new TCP_Packet(m_recvBuffer);
+                uint16_t new_seq = new_packet->getHeader().fields[SEQ];
+                fprintf(stdout, "Receiving packet %hu\n", new_seq);
+                delete new_packet;
 
                 outputFile.close();
                 return true;
@@ -170,12 +172,10 @@ bool TCP_Client::setTimeout(float sec, float usec, bool flag){
     // If flag is 1 then send timeout else receive timeout
     if(flag){
         if(setsockopt(m_sockFD, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv)) < 0){
-            // perror("Send Timeout Error");
             return false;
         }
     } else {
         if(setsockopt(m_sockFD, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv)) < 0){
-            // perror("Receive Timeout Error");
             return false;
         }
     }

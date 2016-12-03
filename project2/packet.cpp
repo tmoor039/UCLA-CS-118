@@ -6,7 +6,6 @@ using namespace std;
 
 TCP_Packet::TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win, bool f_ack, 
 		bool f_syn, bool f_fin, uint8_t* data, ssize_t data_size)
-//: m_encoded_packet(nullptr), m_enc_count(0), m_sent(false), m_acked(false), m_tri_dups(false), m_num_acks(0)
 {
 	// Set Header Fields
 	m_header.fields[SEQ] = seq;
@@ -24,8 +23,6 @@ TCP_Packet::TCP_Packet(uint16_t seq, uint16_t ack, uint16_t win, bool f_ack,
 // Grab the first 8 bytes and decode them into the header
 // Store the rest in data
 TCP_Packet::TCP_Packet(uint8_t* enc_stream, int enc_size)
- //   : m_encoded_packet(nullptr), m_enc_count(0), m_sent(false), m_acked(false),
-   // m_tri_dups(false), m_num_acks(0)
 {
 	if(enc_stream){
 		m_header.decode(enc_stream);
@@ -40,8 +37,8 @@ TCP_Packet::TCP_Packet(uint8_t* enc_stream, int enc_size)
 
 // Copy constructor to make deep copies
 TCP_Packet::TCP_Packet(const TCP_Packet& other)
-    : m_data(other.m_data), m_enc_count(other.m_enc_count), m_sent(other.m_sent), m_acked(other.m_acked),
-    m_tri_dups(other.m_tri_dups), m_num_acks(other.m_num_acks)
+    : m_data(other.m_data), m_enc_count(other.m_enc_count), m_sent(other.m_sent), m_acked(other.m_acked)
+    
 {
     m_header = other.m_header;
     m_time_sent = other.m_time_sent;
@@ -50,11 +47,6 @@ TCP_Packet::TCP_Packet(const TCP_Packet& other)
     for(ssize_t i = 0; i < m_enc_count; i++){
         m_encoded_packet[i] = other.m_encoded_packet[i];
     }
-    
-/*    cout << "MY count: " << m_enc_count << endl;
-    cout << "Other count: " << other.m_enc_count << endl;
-    m_encoded_packet = new uint8_t[m_enc_count];
-    memcpy(m_encoded_packet, other.m_encoded_packet, m_enc_count);*/
 }
 
 // Assignment operator to make deep copies
@@ -65,8 +57,6 @@ TCP_Packet& TCP_Packet::operator=(const TCP_Packet& other){
         m_time_sent = other.m_time_sent;
         m_sent = other.m_sent;
         m_acked = other.m_acked;
-        m_tri_dups = other.m_tri_dups;
-        m_num_acks = other.m_num_acks;
         m_enc_count = other.m_enc_count;
         // Do the deep copy of encoded data
         if(other.m_encoded_packet){
@@ -79,14 +69,12 @@ TCP_Packet& TCP_Packet::operator=(const TCP_Packet& other){
                 m_encoded_packet[i] = other.m_encoded_packet[i];
             }
         }
-    /*cout << "MY count: " << m_enc_count << endl;
-    cout << "Other count: " << other.m_enc_count << endl;
-        memcpy(m_encoded_packet, other.m_encoded_packet, other.m_enc_count);*/
     }
     return *this;
 }
 
 TCP_Packet::~TCP_Packet(){
+    // Delete encoded data
     if(m_encoded_packet){
         delete [] m_encoded_packet;
         m_encoded_packet = nullptr;
@@ -135,33 +123,9 @@ bool TCP_Packet::setData(char* data, int data_size){
 }
 
 void TCP_Packet::setAcked(){
-    // If we have already been acked, count the duplicates
-    if(m_acked){
-        // If we have 3 duplicates, set tri duplicates field
-        if(++m_num_acks == 3){
-            m_tri_dups = true;
-        }
-    } else {
-        m_acked = true;
-    }
+    m_acked = true;
 }
 
 void TCP_Packet::setSent() {
     m_sent = true;
-
-    // if this packet is getting resent, reset number of acks
-    if (m_tri_dups) {
-        m_num_acks = 0;
-        m_tri_dups = false;
-    }
-}
-
-void TCP_Packet::deepCopyEncoded(TCP_Packet* from){
-    if(from->getEncoded()){
-        m_encoded_packet = new uint8_t[m_enc_count];
-        uint8_t* from_enc = from->getEncoded();
-        for(ssize_t i = 0; i < m_enc_count; i++){
-            m_encoded_packet[i] = from_enc[i];
-        }
-    }
 }
