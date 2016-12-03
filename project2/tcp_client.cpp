@@ -71,7 +71,6 @@ bool TCP_Client::receiveFile(){
     // Receive the file
     while(1){
         if(receiveData()){
-
             // Parse packet data
             m_packet = new TCP_Packet(m_recvBuffer, m_recvSize);
             uint16_t ack = m_packet->getHeader().fields[ACK];
@@ -82,6 +81,7 @@ bool TCP_Client::receiveFile(){
             fprintf(stdout, "Receiving packet %hu\n", seq);
             // Detect FIN bit
             if (0x0001 & flags) {
+                delete m_packet;
                 // Send the FIN/ACK
                 fprintf(stdout, "Sending packet %d FIN\n", (seq + 1) % MAX_SEQ);
                 m_packet = new TCP_Packet(ack, (seq + 1) % MAX_SEQ, PACKET_SIZE, 1, 0, 1);
@@ -95,12 +95,13 @@ bool TCP_Client::receiveFile(){
                     fprintf(stdout, "Sending packet %d Retransmission FIN\n", (seq + 1) % MAX_SEQ);
                     sendData(m_packet->encode());
                 }
+                delete m_packet;
 
-                TCP_Packet* new_packet = new TCP_Packet(m_recvBuffer);
-                uint16_t new_seq = new_packet->getHeader().fields[SEQ];
-                fprintf(stdout, "Receiving packet %hu\n", new_seq);
-                delete new_packet;
-
+                m_packet = new TCP_Packet(m_recvBuffer);
+                seq = m_packet->getHeader().fields[SEQ];
+                fprintf(stdout, "Receiving packet %hu\n", seq);
+                delete m_packet;
+                m_packet = nullptr;
                 outputFile.close();
                 return true;
             }
@@ -117,7 +118,6 @@ bool TCP_Client::receiveFile(){
                 }
                 m_written.push_back(seq);
                 m_expected_seq = (m_expected_seq + m_packet->getLength() - HEADER_SIZE) % MAX_SEQ;
-                delete m_packet;
 
                 // Check if there are more correctly-ordered packets in the buffer
                 bool found = true;
@@ -156,10 +156,12 @@ bool TCP_Client::receiveFile(){
                 }
             }
 
+            delete m_packet;
             // Send the ACK
             fprintf(stdout, "Sending packet %d\n", m_expected_seq);
             m_packet = new TCP_Packet(ack, m_expected_seq, START_WINDOW, 1, 0, 0);
             sendData(m_packet->encode());
+            delete m_packet;
         }
     }
 }

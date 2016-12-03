@@ -350,7 +350,6 @@ bool TCP_Server::sendFile() {
             grabChunk(min((int)(m_window/PACKET_SIZE) - m_filePackets.size(), (int)m_cwnd - m_filePackets.size()));
         }
     }
-    // TODO: Change timeout
     setTimeout(0, RTO * 1000, 1);
     setTimeout(0, RTO * 1000, 0);
 
@@ -362,6 +361,7 @@ bool TCP_Server::sendFile() {
 
     // Retransmit FIN if timeout
     while(!receiveData()){
+        m_cwnd = 1;
         fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", ack, (int)m_cwnd * MIN_CWND, SSTHRESH);
         sendData(m_packet->encode());
     }
