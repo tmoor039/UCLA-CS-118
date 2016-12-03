@@ -143,14 +143,14 @@ bool TCP_Server::handshake(){
     srand(time(NULL));
     m_nextSeq = rand() % MAX_SEQ + 1;
     m_baseSeq = m_nextSeq;
-    fprintf(stdout, "Sending packet %d %d %d SYN\n", m_nextSeq, (int)m_cwnd * MIN_CWND, SSTHRESH);
+    fprintf(stdout, "Sending packet %d %d %d SYN\n", m_nextSeq, (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
     m_packet = new TCP_Packet(m_nextSeq, seq + 1, PACKET_SIZE, 1, 1, 0);
     sendData(m_packet->encode());
 
     // Retransmit data if timeout
     while(1) {
         while(!receiveData()){
-            fprintf(stdout, "Sending packet %d %d %d Retransmission SYN\n", m_nextSeq, (int)m_cwnd * MIN_CWND, SSTHRESH);
+            fprintf(stdout, "Sending packet %d %d %d Retransmission SYN\n", m_nextSeq, (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
             sendData(m_packet->encode());
         }
 
@@ -233,9 +233,9 @@ bool TCP_Server::sendNextPacket(ssize_t pos, bool resend) {
             return false;
         }
         if(resend) { 
-            fprintf(stdout, "Sending packet %d %d %d Retransmission\n", m_filePackets.at(pos).getHeader().fields[SEQ], (int)m_cwnd * MIN_CWND, SSTHRESH);
+            fprintf(stdout, "Sending packet %d %d %d Retransmission\n", m_filePackets.at(pos).getHeader().fields[SEQ], (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
         } else {
-            fprintf(stdout, "Sending packet %d %d %d\n", m_filePackets.at(pos).getHeader().fields[SEQ], (int)m_cwnd * MIN_CWND, SSTHRESH);
+            fprintf(stdout, "Sending packet %d %d %d\n", m_filePackets.at(pos).getHeader().fields[SEQ], (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
             m_filePackets.at(pos).setSent();
         }
         return true;
@@ -355,14 +355,14 @@ bool TCP_Server::sendFile() {
 
     // Send FIN
     m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-    fprintf(stdout, "Sending packet %d %d %d FIN\n", ack, (int)m_cwnd * MIN_CWND, SSTHRESH);
+    fprintf(stdout, "Sending packet %d %d %d FIN\n", ack, (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
     m_packet = new TCP_Packet(ack, seq + 1, PACKET_SIZE, 0, 0, 1);
     sendData(m_packet->encode());
 
     // Retransmit FIN if timeout
     while(!receiveData()){
         m_cwnd = 1;
-        fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", ack, (int)m_cwnd * MIN_CWND, SSTHRESH);
+        fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", ack, (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
         sendData(m_packet->encode());
     }
     delete m_packet;
@@ -380,7 +380,7 @@ bool TCP_Server::sendFile() {
 
     // Send ACK
     m_baseSeq = (m_baseSeq + PACKET_DATA_SIZE) % MAX_SEQ;
-    fprintf(stdout, "Sending packet %d %d %d\n", ack, (int)m_cwnd * MIN_CWND, SSTHRESH);
+    fprintf(stdout, "Sending packet %d %d %d\n", ack, (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
     m_packet = new TCP_Packet(ack, seq + 1, PACKET_SIZE, 1, 0, 0);
     sendData(m_packet->encode());
 
@@ -399,7 +399,7 @@ bool TCP_Server::sendFile() {
 
         if(status > 0) {
            // cout << "FINISH" << endl;
-            fprintf(stdout, "Sending packet %d %d %d Retransmission\n", ack, (int)m_cwnd * MIN_CWND, SSTHRESH);
+            fprintf(stdout, "Sending packet %d %d %d Retransmission\n", ack, (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
             sendData(m_packet->encode());
         }
     }
