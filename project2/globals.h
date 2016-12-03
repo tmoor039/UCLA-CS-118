@@ -20,7 +20,6 @@
 // Macros for congestion control
 #define SS 0
 #define CA 1
-#define FTR 2
 
 #define MIN_CWND 1024
 
