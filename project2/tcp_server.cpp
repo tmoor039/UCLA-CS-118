@@ -6,8 +6,12 @@
 #include <cmath>
 #include <iterator>
 #include <algorithm>
+#include <unistd.h>
 
 using namespace std;
+
+bool finishing = false;
+bool finished = false;
 
     TCP_Server::TCP_Server(uint16_t port, string filename)
 : TCP(port), m_filename(filename)
@@ -82,8 +86,11 @@ bool TCP_Server::receiveData() {
     if(m_recvSize == -1){
         // We have timed out based on the set timer on the socket
         if(errno == EWOULDBLOCK){
-            return false;
+            if (finishing) {
+                finished = true;
+            }
         }
+        return false;
     }
     return true;
 }
@@ -358,12 +365,17 @@ bool TCP_Server::sendFile() {
     fprintf(stdout, "Sending packet %d %d %d FIN\n", ack, (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
     m_packet = new TCP_Packet(ack, seq + 1, PACKET_SIZE, 0, 0, 1);
     sendData(m_packet->encode());
+    int counter = 3;
 
     // Retransmit FIN if timeout
     while(!receiveData()){
         m_cwnd = 1;
         fprintf(stdout, "Sending packet %d %d %d Retransmission FIN\n", ack, (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
         sendData(m_packet->encode());
+        if (counter <= 0) {
+            return true;
+        }
+        counter--;
     }
     delete m_packet;
     m_packet = nullptr;
@@ -384,25 +396,34 @@ bool TCP_Server::sendFile() {
     m_packet = new TCP_Packet(ack, seq + 1, PACKET_SIZE, 1, 0, 0);
     sendData(m_packet->encode());
 
+    TCP_Packet* new_packet = nullptr;
+    finishing = true;
+    setTimeout(0, 2 * RTO * 1000, 1);
+    setTimeout(0, 2 * RTO * 1000, 0);
     // Timed Wait
     while(1){
-        setTimeout(0, 2 * RTO * 1000, 0);
 
         // Check if the timer successfully finishes (no more data was received)
         int status = receiveData();
         
-        if(status <= 0){
+        if(finished) {
           //  perror("READ");
         //    cout << errno << endl;
             break;
         }
 
-        if(status > 0) {
+        if(status) {
            // cout << "FINISH" << endl;
+            new_packet = new TCP_Packet(m_recvBuffer);
+            ack = new_packet->getHeader().fields[ACK];
+            fprintf(stdout, "Receiving packet %d\n", ack);
+            delete new_packet;
+            new_packet = nullptr;
             fprintf(stdout, "Sending packet %d %d %d Retransmission\n", ack, (int)m_cwnd * MIN_CWND, (int)m_ssthresh);
             sendData(m_packet->encode());
         }
     }
+    close(m_sockFD);
     delete m_packet;
     m_packet = nullptr;
     return true;
@@ -429,7 +450,6 @@ int TCP_Server::receiveAck() {
 
 int TCP_Server::seq2index(uint16_t seq) {
     // Run a linear scan within the window to find corresponding
-    // packet to sequence number
     ssize_t packet_buffer_size = m_filePackets.size();
     for(ssize_t i = 0; i < min((int)(m_window/PACKET_SIZE), (int)packet_buffer_size); i++){
         if((m_filePackets.at(i).getHeader().fields[SEQ] + m_filePackets.at(i).getData()->size()) % MAX_SEQ == seq){
