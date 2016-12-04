@@ -4,6 +4,7 @@
 #include <utility>
 #include <time.h>
 #include <algorithm>
+#include <unistd.h>
 
 using namespace std;
 
@@ -81,29 +82,40 @@ bool TCP_Client::receiveFile(){
             fprintf(stdout, "Receiving packet %hu\n", seq);
             // Detect FIN bit
             if (0x0001 & flags) {
-                delete m_packet;
-                // Send the FIN/ACK
-                fprintf(stdout, "Sending packet %d FIN\n", (seq + 1) % MAX_SEQ);
-                m_packet = new TCP_Packet(ack, (seq + 1) % MAX_SEQ, PACKET_SIZE, 1, 0, 1);
-                sendData(m_packet->encode());
-
-                setTimeout(0, RTO * 1000, 1);
-                setTimeout(0, RTO * 1000, 0);
-
-                // Retransmit in case of timeout
-                while(!receiveData()){
-                    fprintf(stdout, "Sending packet %d Retransmission FIN\n", (seq + 1) % MAX_SEQ);
+                while(1) {
+                    delete m_packet;
+                    // Send the FIN/ACK
+                    fprintf(stdout, "Sending packet %d FIN\n", (seq + 1) % MAX_SEQ);
+                    m_packet = new TCP_Packet(ack, (seq + 1) % MAX_SEQ, PACKET_SIZE, 1, 0, 1);
                     sendData(m_packet->encode());
-                }
-                delete m_packet;
 
-                m_packet = new TCP_Packet(m_recvBuffer);
-                seq = m_packet->getHeader().fields[SEQ];
-                fprintf(stdout, "Receiving packet %hu\n", seq);
-                delete m_packet;
-                m_packet = nullptr;
-                outputFile.close();
-                return true;
+                    setTimeout(0, RTO * 1000, 1);
+                    setTimeout(0, RTO * 1000, 0);
+
+                    // Retransmit in case of timeout
+                    int counter = 3;
+                    while(!receiveData()){
+                        fprintf(stdout, "Sending packet %d Retransmission FIN\n", (seq + 1) % MAX_SEQ);
+                        sendData(m_packet->encode());
+                        if (counter <= 0) {
+                            outputFile.close();
+                            close(m_sockFD);
+                            return true;
+                        }
+                        counter--;
+                    }
+                    delete m_packet;
+
+                    m_packet = new TCP_Packet(m_recvBuffer);
+                    seq = m_packet->getHeader().fields[SEQ];
+                    flags = m_packet->getHeader().fields[FLAGS];
+                    fprintf(stdout, "Receiving packet %hu\n", seq);
+                    if(flags == 0x0004) {
+                        outputFile.close();
+                        close(m_sockFD);
+                        return true;
+                    }
+                }
             }
 
             // If an expected packet was received

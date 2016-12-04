@@ -1,7 +1,7 @@
 .PHONY: all clean simple-tcp-server simple-tcp-client
 CXX=g++
 CXXOPTIMIZE= -O2
-CXXFLAGS= -Wall -pthread -std=c++11 $(CXXOPTIMIZE)
+CXXFLAGS= -g -Wall -pthread -std=c++11 $(CXXOPTIMIZE)
 CLASSES=packet.cpp
 
 all: simple-tcp-server simple-tcp-client 
