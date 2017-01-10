@@ -1,5 +1,5 @@
 # UCLA-CS-118
-This repo contains all my projects for CS 118 at UCLA as taken during Fall 2016 under Professor Zhang.
+This repo contains all my projects for CS 118 at UCLA as taken during Fall 2016 under Professor Zhang. Use the code presented here as a reference or for inspiration.
 
 Partners: Omar Ozgur and Kevin Xu
 
